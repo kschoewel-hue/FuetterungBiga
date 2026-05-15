@@ -413,7 +413,10 @@
   <div class="fields-grid">
     <div class="full">
       <label for="f-uhrzeit">Uhrzeit</label>
-      <input type="time" id="f-uhrzeit" step="3600">
+      <div style="display:flex;align-items:center;gap:0.4rem;">
+        <input type="number" id="f-uhrzeit" min="0" max="23" placeholder="13" style="max-width:80px;">
+        <span style="font-family:'DM Mono',monospace;font-size:1rem;color:var(--ink2);font-weight:500;">: 00</span>
+      </div>
     </div>
 
     <div>
@@ -425,10 +428,7 @@
       <input type="number" id="f-end" placeholder="0" step="0.1" min="0">
     </div>
 
-    <div>
-      <label for="f-mist">Geflügelmist (kg)</label>
-      <input type="number" id="f-mist" placeholder="0" step="0.1" min="0">
-    </div>
+
     <div>
       <label for="f-gras">Grassilage (kg)</label>
       <input type="number" id="f-gras" placeholder="0" step="0.1" min="0">
@@ -491,9 +491,6 @@
             <th>Mitarbeiter</th>
             <th>Datum</th>
             <th>Uhrzeit</th>
-            <th>Start (kg)</th>
-            <th>End (kg)</th>
-            <th>Geflügelmist</th>
             <th>Grassilage</th>
             <th>Silphie/GPS</th>
             <th>Schrot</th>
@@ -503,7 +500,7 @@
           </tr>
         </thead>
         <tbody id="records-body">
-          <tr><td colspan="13" class="empty-state">Noch keine Einträge.</td></tr>
+          <tr><td colspan="10" class="empty-state">Noch keine Einträge.</td></tr>
         </tbody>
       </table>
     </div>
@@ -585,7 +582,7 @@
     const now = new Date();
     document.getElementById("form-date").textContent =
       now.toLocaleDateString("de-DE", { weekday:"long", day:"numeric", month:"long", year:"numeric" });
-    document.getElementById("f-uhrzeit").value = String(now.getHours()).padStart(2,"0") + ":00";
+    document.getElementById("f-uhrzeit").value = now.getHours();
 
     if (scriptUrl) {
       document.getElementById("cfg-url").value = scriptUrl;
@@ -601,15 +598,15 @@
   function recalc() {
     const start  = parseFloat(document.getElementById("f-start").value)     || 0;
     const end    = parseFloat(document.getElementById("f-end").value)        || 0;
-    const mist   = parseFloat(document.getElementById("f-mist").value)       || 0;
+
     const gras   = parseFloat(document.getElementById("f-gras").value)       || 0;
     const silph  = parseFloat(document.getElementById("f-silphie").value)    || 0;
     const schrot = parseFloat(document.getElementById("f-schrot").value)     || 0;
     const kart   = parseFloat(document.getElementById("f-kartoffeln").value) || 0;
     document.getElementById("f-befuellung").value = parseFloat((end - start).toFixed(2));
-    document.getElementById("f-mais").value       = parseFloat(((end - start) - mist - gras - silph - schrot - kart).toFixed(2));
+    document.getElementById("f-mais").value       = parseFloat(((end - start) - gras - silph - schrot - kart).toFixed(2));
   }
-  ["f-start","f-end","f-mist","f-gras","f-silphie","f-schrot","f-kartoffeln"]
+  ["f-start","f-end","f-gras","f-silphie","f-schrot","f-kartoffeln"]
     .forEach(id => document.getElementById(id).addEventListener("input", recalc));
 
   // ── LOAD ENTRIES FROM GOOGLE SHEETS ─────────────────
@@ -643,21 +640,20 @@
   async function saveEntry() {
     const start      = fval("f-start");
     const end        = fval("f-end");
-    const mist       = fval("f-mist");
     const gras       = fval("f-gras");
     const silph      = fval("f-silphie");
     const schrot     = fval("f-schrot");
     const kart       = fval("f-kartoffeln");
     const befuellung = parseFloat((end - start).toFixed(2));
-    const mais       = parseFloat((befuellung - mist - gras - silph - schrot - kart).toFixed(2));
+    const mais       = parseFloat((befuellung - gras - silph - schrot - kart).toFixed(2));
 
     const row = {
       mitarbeiter:   currentUser,
       datum:         new Date().toLocaleDateString("de-DE"),
-      uhrzeit:       document.getElementById("f-uhrzeit").value,
+      uhrzeit:       String(document.getElementById("f-uhrzeit").value).padStart(2,"0") + ":00",
       startgewicht:  start,
       endgewicht:    end,
-      gefluegelmist: mist,
+
       grassilage:    gras,
       silphie_gps:   silph,
       schrot:        schrot,
@@ -670,24 +666,68 @@
     btn.disabled = true;
     btn.textContent = "Speichern…";
 
-    if (scriptUrl) {
-      try {
-        const params = "?action=append&row=" + encodeURIComponent(JSON.stringify(row));
-        const res    = await fetch(scriptUrl + params);
-        const data   = await res.json();
-        if (data.status !== "ok") throw new Error(data.message);
-        showToast("✓ Eintrag gespeichert");
-        await loadEntries();
-      } catch(e) {
-        showToast("⚠ Fehler beim Speichern!", true);
-        console.error(e);
+    // Prüfen ob bereits ein Eintrag für heute existiert
+    const todayStr = row.datum;
+    const existingIdx = entries.findIndex(e => formatDatum(e.datum) === formatDatum(todayStr));
+
+    if (existingIdx !== -1) {
+      // Zusammenführen: Felder addieren
+      const existing = entries[existingIdx];
+      const merged = {
+        mitarbeiter:   row.mitarbeiter,
+        datum:         existing.datum,
+        uhrzeit:       existing.uhrzeit,
+        startgewicht:  "",
+        endgewicht:    "",
+        grassilage:    parseFloat((parseFloat(existing.grassilage)||0)    + (parseFloat(row.grassilage)||0)).toFixed(2),
+        silphie_gps:   parseFloat((parseFloat(existing.silphie_gps)||0)   + (parseFloat(row.silphie_gps)||0)).toFixed(2),
+        schrot:        parseFloat((parseFloat(existing.schrot)||0)        + (parseFloat(row.schrot)||0)).toFixed(2),
+        kartoffeln:    parseFloat((parseFloat(existing.kartoffeln)||0)    + (parseFloat(row.kartoffeln)||0)).toFixed(2),
+        befuellung:    parseFloat((parseFloat(existing.befuellung)||0)    + (parseFloat(row.befuellung)||0)).toFixed(2),
+        mais:          parseFloat((parseFloat(existing.mais)||0)          + (parseFloat(row.mais)||0)).toFixed(2),
+      };
+
+      if (scriptUrl) {
+        try {
+          // Erst löschen, dann merged speichern
+          const delParams = "?action=deleteRow&datum=" + encodeURIComponent(formatDatum(todayStr));
+          await fetch(scriptUrl + delParams);
+          const params = "?action=append&row=" + encodeURIComponent(JSON.stringify(merged));
+          const res    = await fetch(scriptUrl + params);
+          const data   = await res.json();
+          if (data.status !== "ok") throw new Error(data.message);
+          showToast("✓ Tageseinträge zusammengeführt");
+          await loadEntries();
+        } catch(e) {
+          showToast("⚠ Fehler beim Speichern!", true);
+          console.error(e);
+        }
+      } else {
+        entries[existingIdx] = merged;
+        localStorage.setItem("futter_entries", JSON.stringify(entries));
+        renderTable();
+        showToast("✓ Tageseinträge zusammengeführt");
       }
     } else {
-      // fallback local
-      entries.push({ nr: entries.length + 1, ...row });
-      localStorage.setItem("futter_entries", JSON.stringify(entries));
-      renderTable();
-      showToast("✓ Lokal gespeichert");
+      // Normaler neuer Eintrag
+      if (scriptUrl) {
+        try {
+          const params = "?action=append&row=" + encodeURIComponent(JSON.stringify(row));
+          const res    = await fetch(scriptUrl + params);
+          const data   = await res.json();
+          if (data.status !== "ok") throw new Error(data.message);
+          showToast("✓ Eintrag gespeichert");
+          await loadEntries();
+        } catch(e) {
+          showToast("⚠ Fehler beim Speichern!", true);
+          console.error(e);
+        }
+      } else {
+        entries.push({ ...row });
+        localStorage.setItem("futter_entries", JSON.stringify(entries));
+        renderTable();
+        showToast("✓ Lokal gespeichert");
+      }
     }
 
     btn.disabled    = false;
@@ -701,9 +741,9 @@
   }
 
   function clearFields() {
-    ["f-start","f-end","f-mist","f-gras","f-silphie","f-schrot","f-kartoffeln","f-befuellung","f-mais"]
+    ["f-start","f-end","f-gras","f-silphie","f-schrot","f-kartoffeln","f-befuellung","f-mais"]
       .forEach(id => document.getElementById(id).value = "");
-    document.getElementById("f-uhrzeit").value = String(new Date().getHours()).padStart(2,"0") + ":00";
+    document.getElementById("f-uhrzeit").value = new Date().getHours();
   }
 
   // ── FORMAT HELPERS ───────────────────────────────────
@@ -754,7 +794,7 @@
     document.getElementById("btn-clear").disabled  = entries.length === 0;
 
     if (entries.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="13" class="empty-state">Noch keine Einträge.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" class="empty-state">Noch keine Einträge.</td></tr>';
       return;
     }
     tbody.innerHTML = entries.map((e, i) =>
@@ -763,9 +803,6 @@
         <td>${e.mitarbeiter}</td>
         <td>${formatDatum(e.datum)}</td>
         <td>${formatUhrzeit(e.uhrzeit)}</td>
-        <td>${e.startgewicht}</td>
-        <td>${e.endgewicht}</td>
-        <td>${e.gefluegelmist}</td>
         <td>${e.grassilage}</td>
         <td>${e.silphie_gps}</td>
         <td>${e.schrot}</td>
@@ -809,7 +846,7 @@
       "Mitarbeiter", "Datum", "Uhrzeit",
       "Startgewicht (kg)", "Endgewicht (kg)",
       "Befüllung (kg)", "Mais (kg)",
-      "Geflügelmist (kg)", "Grassilage (kg)",
+      "Grassilage (kg)",
       "Silphie/GPS (kg)", "Schrot (kg)", "Kartoffeln (kg)"
     ];
 
@@ -853,14 +890,14 @@
 
       // Zahlenspalten
       [e.startgewicht, e.endgewicht, e.befuellung, e.mais,
-       e.gefluegelmist, e.grassilage, e.silphie_gps, e.schrot, e.kartoffeln]
+       e.grassilage, e.silphie_gps, e.schrot, e.kartoffeln]
       .forEach((v, ci) => {
         const addr = XLSX.utils.encode_cell({r, c: ci + 3});
         ws[addr] = { t: "n", v: parseFloat(v) || 0 };
       });
     });
 
-    ws["!ref"] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:entries.length, c:11}});
+    ws["!ref"] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:entries.length, c:10}});
 
     ws["!cols"] = [
       {wch:18},{wch:14},{wch:10},
