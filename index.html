@@ -620,7 +620,7 @@
       return;
     }
     try {
-      const res  = await fetch(scriptUrl + "?action=get");
+      const res  = await fetch(scriptUrl + "?action=get", { redirect: "follow" });
       const data = await res.json();
       if (data.status === "ok") {
         entries = data.rows;
@@ -669,8 +669,22 @@
     // Eintrag ans Script senden – Zusammenführung passiert serverseitig
     if (scriptUrl) {
       try {
-        const params = "?action=appendOrMerge&row=" + encodeURIComponent(JSON.stringify(row));
-        const res    = await fetch(scriptUrl + params);
+        // Einzelne Felder als separate Parameter senden (verhindert Parameterverlust bei 302)
+        const p = new URLSearchParams({
+          action:      "appendOrMerge",
+          mitarbeiter: row.mitarbeiter,
+          datum:       row.datum,
+          uhrzeit:     row.uhrzeit,
+          startgewicht: row.startgewicht,
+          endgewicht:   row.endgewicht,
+          grassilage:   row.grassilage,
+          silphie_gps:  row.silphie_gps,
+          schrot:       row.schrot,
+          kartoffeln:   row.kartoffeln,
+          befuellung:   row.befuellung,
+          mais:         row.mais,
+        });
+        const res    = await fetch(scriptUrl + "?" + p.toString());
         const data   = await res.json();
         if (data.status !== "ok") throw new Error(data.message);
         showToast(data.merged ? "✓ Tageseinträge zusammengeführt" : "✓ Eintrag gespeichert");
