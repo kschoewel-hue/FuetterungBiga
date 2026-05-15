@@ -689,10 +689,8 @@
 
       if (scriptUrl) {
         try {
-          // Erst löschen, dann merged speichern
-          const delParams = "?action=deleteRow&datum=" + encodeURIComponent(formatDatum(todayStr));
-          await fetch(scriptUrl + delParams);
-          const params = "?action=append&row=" + encodeURIComponent(JSON.stringify(merged));
+          // Bestehende Zeile direkt überschreiben (kein löschen nötig)
+          const params = "?action=updateRow&datum=" + encodeURIComponent(formatDatum(todayStr)) + "&row=" + encodeURIComponent(JSON.stringify(merged));
           const res    = await fetch(scriptUrl + params);
           const data   = await res.json();
           if (data.status !== "ok") throw new Error(data.message);
