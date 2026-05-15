@@ -669,25 +669,9 @@
     // Eintrag ans Script senden – Zusammenführung passiert serverseitig
     if (scriptUrl) {
       try {
-        // Einzelne Felder als separate Parameter senden (verhindert Parameterverlust bei 302)
-        const p = new URLSearchParams({
-          action:      "appendOrMerge",
-          mitarbeiter: row.mitarbeiter,
-          datum:       row.datum,
-          uhrzeit:     row.uhrzeit,
-          startgewicht: row.startgewicht,
-          endgewicht:   row.endgewicht,
-          grassilage:   row.grassilage,
-          silphie_gps:  row.silphie_gps,
-          schrot:       row.schrot,
-          kartoffeln:   row.kartoffeln,
-          befuellung:   row.befuellung,
-          mais:         row.mais,
-        });
-        const res    = await fetch(scriptUrl + "?" + p.toString());
-        const data   = await res.json();
-        if (data.status !== "ok") throw new Error(data.message);
-        showToast(data.merged ? "✓ Tageseinträge zusammengeführt" : "✓ Eintrag gespeichert");
+        await postToScript(row);
+        showToast("✓ Eintrag gespeichert");
+        await new Promise(r => setTimeout(r, 1500));
         await loadEntries();
       } catch(e) {
         showToast("⚠ Fehler beim Speichern!", true);
@@ -899,6 +883,63 @@
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Einfüttern");
     XLSX.writeFile(wb, `einfuettern_${new Date().toISOString().slice(0,10)}.xlsx`);
+  }
+
+  // ── POST VIA IFRAME (umgeht 302/CORS Problem) ────────
+  function postToScript(row) {
+    return new Promise((resolve) => {
+      // Altes iframe entfernen
+      const old = document.getElementById("post-iframe");
+      if (old) old.remove();
+
+      // Verstecktes iframe erstellen
+      const iframe = document.createElement("iframe");
+      iframe.id = "post-iframe";
+      iframe.name = "post-iframe";
+      iframe.style.display = "none";
+      document.body.appendChild(iframe);
+
+      // Formular erstellen und absenden
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = scriptUrl;
+      form.target = "post-iframe";
+
+      const fields = {
+        action:       "appendOrMerge",
+        mitarbeiter:  row.mitarbeiter,
+        datum:        row.datum,
+        uhrzeit:      row.uhrzeit,
+        startgewicht: row.startgewicht,
+        endgewicht:   row.endgewicht,
+        grassilage:   row.grassilage,
+        silphie_gps:  row.silphie_gps,
+        schrot:       row.schrot,
+        kartoffeln:   row.kartoffeln,
+        befuellung:   row.befuellung,
+        mais:         row.mais,
+      };
+
+      for (const [key, val] of Object.entries(fields)) {
+        const input = document.createElement("input");
+        input.type  = "hidden";
+        input.name  = key;
+        input.value = val;
+        form.appendChild(input);
+      }
+
+      document.body.appendChild(form);
+      form.submit();
+
+      // Warten bis iframe geladen ist (Script hat verarbeitet)
+      iframe.onload = () => {
+        form.remove();
+        resolve();
+      };
+
+      // Timeout-Fallback nach 3 Sekunden
+      setTimeout(resolve, 3000);
+    });
   }
 
   // ── HELPERS ──────────────────────────────────────────
