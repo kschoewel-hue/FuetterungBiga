@@ -666,66 +666,43 @@
     btn.disabled = true;
     btn.textContent = "Speichern…";
 
-    // Prüfen ob bereits ein Eintrag für heute existiert
-    const todayStr = row.datum;
-    const existingIdx = entries.findIndex(e => formatDatum(e.datum) === formatDatum(todayStr));
-
-    if (existingIdx !== -1) {
-      // Zusammenführen: Felder addieren
-      const existing = entries[existingIdx];
-      const merged = {
-        mitarbeiter:   row.mitarbeiter,
-        datum:         existing.datum,
-        uhrzeit:       existing.uhrzeit,
-        startgewicht:  "",
-        endgewicht:    "",
-        grassilage:    parseFloat((parseFloat(existing.grassilage)||0)    + (parseFloat(row.grassilage)||0)).toFixed(2),
-        silphie_gps:   parseFloat((parseFloat(existing.silphie_gps)||0)   + (parseFloat(row.silphie_gps)||0)).toFixed(2),
-        schrot:        parseFloat((parseFloat(existing.schrot)||0)        + (parseFloat(row.schrot)||0)).toFixed(2),
-        kartoffeln:    parseFloat((parseFloat(existing.kartoffeln)||0)    + (parseFloat(row.kartoffeln)||0)).toFixed(2),
-        befuellung:    parseFloat((parseFloat(existing.befuellung)||0)    + (parseFloat(row.befuellung)||0)).toFixed(2),
-        mais:          parseFloat((parseFloat(existing.mais)||0)          + (parseFloat(row.mais)||0)).toFixed(2),
-      };
-
-      if (scriptUrl) {
-        try {
-          // Bestehende Zeile direkt überschreiben (kein löschen nötig)
-          const params = "?action=updateRow&datum=" + encodeURIComponent(formatDatum(todayStr)) + "&row=" + encodeURIComponent(JSON.stringify(merged));
-          const res    = await fetch(scriptUrl + params);
-          const data   = await res.json();
-          if (data.status !== "ok") throw new Error(data.message);
-          showToast("✓ Tageseinträge zusammengeführt");
-          await loadEntries();
-        } catch(e) {
-          showToast("⚠ Fehler beim Speichern!", true);
-          console.error(e);
-        }
-      } else {
-        entries[existingIdx] = merged;
-        localStorage.setItem("futter_entries", JSON.stringify(entries));
-        renderTable();
-        showToast("✓ Tageseinträge zusammengeführt");
+    // Eintrag ans Script senden – Zusammenführung passiert serverseitig
+    if (scriptUrl) {
+      try {
+        const params = "?action=appendOrMerge&row=" + encodeURIComponent(JSON.stringify(row));
+        const res    = await fetch(scriptUrl + params);
+        const data   = await res.json();
+        if (data.status !== "ok") throw new Error(data.message);
+        showToast(data.merged ? "✓ Tageseinträge zusammengeführt" : "✓ Eintrag gespeichert");
+        await loadEntries();
+      } catch(e) {
+        showToast("⚠ Fehler beim Speichern!", true);
+        console.error(e);
       }
     } else {
-      // Normaler neuer Eintrag
-      if (scriptUrl) {
-        try {
-          const params = "?action=append&row=" + encodeURIComponent(JSON.stringify(row));
-          const res    = await fetch(scriptUrl + params);
-          const data   = await res.json();
-          if (data.status !== "ok") throw new Error(data.message);
-          showToast("✓ Eintrag gespeichert");
-          await loadEntries();
-        } catch(e) {
-          showToast("⚠ Fehler beim Speichern!", true);
-          console.error(e);
-        }
+      // Fallback lokal
+      const todayStr = row.datum;
+      const existingIdx = entries.findIndex(e => formatDatum(e.datum) === formatDatum(todayStr));
+      if (existingIdx !== -1) {
+        const ex = entries[existingIdx];
+        entries[existingIdx] = {
+          ...ex,
+          mitarbeiter: row.mitarbeiter,
+          startgewicht: "", endgewicht: "",
+          grassilage:  parseFloat((parseFloat(ex.grassilage)||0)  + (parseFloat(row.grassilage)||0)).toFixed(2),
+          silphie_gps: parseFloat((parseFloat(ex.silphie_gps)||0) + (parseFloat(row.silphie_gps)||0)).toFixed(2),
+          schrot:      parseFloat((parseFloat(ex.schrot)||0)      + (parseFloat(row.schrot)||0)).toFixed(2),
+          kartoffeln:  parseFloat((parseFloat(ex.kartoffeln)||0)  + (parseFloat(row.kartoffeln)||0)).toFixed(2),
+          befuellung:  parseFloat((parseFloat(ex.befuellung)||0)  + (parseFloat(row.befuellung)||0)).toFixed(2),
+          mais:        parseFloat((parseFloat(ex.mais)||0)        + (parseFloat(row.mais)||0)).toFixed(2),
+        };
+        showToast("✓ Tageseinträge zusammengeführt");
       } else {
         entries.push({ ...row });
-        localStorage.setItem("futter_entries", JSON.stringify(entries));
-        renderTable();
-        showToast("✓ Lokal gespeichert");
+        showToast("✓ Eintrag gespeichert");
       }
+      localStorage.setItem("futter_entries", JSON.stringify(entries));
+      renderTable();
     }
 
     btn.disabled    = false;
