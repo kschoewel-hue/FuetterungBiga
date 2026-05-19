@@ -682,9 +682,18 @@
           befuellung:   row.befuellung,
           mais:         row.mais,
         }).toString();
-        const res  = await fetch(scriptUrl + params);
-        const data = await res.json();
-        if (data.status !== "ok") throw new Error(data.message);
+
+        // Automatisch bis zu 3 Versuche (wegen Google 302-Weiterleitung)
+        let success = false;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            const res  = await fetch(scriptUrl + params);
+            const data = await res.json();
+            if (data.status === "ok") { success = true; break; }
+          } catch(_) {}
+          if (attempt < 3) await new Promise(r => setTimeout(r, 800));
+        }
+        if (!success) throw new Error("Speichern fehlgeschlagen nach 3 Versuchen");
         showToast("✓ Eintrag gespeichert");
         await loadEntries();
       } catch(e) {
