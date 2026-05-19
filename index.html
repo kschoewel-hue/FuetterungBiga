@@ -623,7 +623,7 @@
       const res  = await fetch(scriptUrl + "?action=get", { redirect: "follow" });
       const data = await res.json();
       if (data.status === "ok") {
-        entries = data.rows;
+        entries = mergeByDate(data.rows);
         renderTable();
         setSyncStatus("ok", "✓ verbunden");
       } else {
@@ -669,9 +669,23 @@
     // Eintrag ans Script senden – Zusammenführung passiert serverseitig
     if (scriptUrl) {
       try {
-        await postToScript(row);
+        const params = "?action=append&" + new URLSearchParams({
+          mitarbeiter:  row.mitarbeiter,
+          datum:        row.datum,
+          uhrzeit:      row.uhrzeit,
+          startgewicht: row.startgewicht,
+          endgewicht:   row.endgewicht,
+          grassilage:   row.grassilage,
+          silphie_gps:  row.silphie_gps,
+          schrot:       row.schrot,
+          kartoffeln:   row.kartoffeln,
+          befuellung:   row.befuellung,
+          mais:         row.mais,
+        }).toString();
+        const res  = await fetch(scriptUrl + params);
+        const data = await res.json();
+        if (data.status !== "ok") throw new Error(data.message);
         showToast("✓ Eintrag gespeichert");
-        await new Promise(r => setTimeout(r, 1500));
         await loadEntries();
       } catch(e) {
         showToast("⚠ Fehler beim Speichern!", true);
@@ -757,6 +771,37 @@
     if (iso) return iso[1] + ":" + iso[2];
     return s;
   }
+
+  // ── MERGE ENTRIES BY DATE ────────────────────────────
+  function mergeByDate(rows) {
+    const map = new Map();
+    for (const e of rows) {
+      const key = formatDatum(e.datum);
+      if (!map.has(key)) {
+        // Erster Eintrag des Tages
+        map.set(key, { ...e });
+      } else {
+        // Weiterer Eintrag: zusammenführen
+        const ex = map.get(key);
+        map.set(key, {
+          mitarbeiter:  e.mitarbeiter,           // Mitarbeiter vom letzten Eintrag
+          datum:        ex.datum,
+          uhrzeit:      ex.uhrzeit,              // Uhrzeit vom ersten Eintrag
+          startgewicht: "",
+          endgewicht:   "",
+          grassilage:   round2((parseFloat(ex.grassilage)||0)  + (parseFloat(e.grassilage)||0)),
+          silphie_gps:  round2((parseFloat(ex.silphie_gps)||0) + (parseFloat(e.silphie_gps)||0)),
+          schrot:       round2((parseFloat(ex.schrot)||0)      + (parseFloat(e.schrot)||0)),
+          kartoffeln:   round2((parseFloat(ex.kartoffeln)||0)  + (parseFloat(e.kartoffeln)||0)),
+          befuellung:   round2((parseFloat(ex.befuellung)||0)  + (parseFloat(e.befuellung)||0)),
+          mais:         round2((parseFloat(ex.mais)||0)        + (parseFloat(e.mais)||0)),
+        });
+      }
+    }
+    return Array.from(map.values());
+  }
+
+  function round2(n) { return parseFloat(n.toFixed(2)); }
 
   // ── RENDER TABLE ─────────────────────────────────────
   function renderTable() {
@@ -883,63 +928,6 @@
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Einfüttern");
     XLSX.writeFile(wb, `einfuettern_${new Date().toISOString().slice(0,10)}.xlsx`);
-  }
-
-  // ── POST VIA IFRAME (umgeht 302/CORS Problem) ────────
-  function postToScript(row) {
-    return new Promise((resolve) => {
-      // Altes iframe entfernen
-      const old = document.getElementById("post-iframe");
-      if (old) old.remove();
-
-      // Verstecktes iframe erstellen
-      const iframe = document.createElement("iframe");
-      iframe.id = "post-iframe";
-      iframe.name = "post-iframe";
-      iframe.style.display = "none";
-      document.body.appendChild(iframe);
-
-      // Formular erstellen und absenden
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = scriptUrl;
-      form.target = "post-iframe";
-
-      const fields = {
-        action:       "appendOrMerge",
-        mitarbeiter:  row.mitarbeiter,
-        datum:        row.datum,
-        uhrzeit:      row.uhrzeit,
-        startgewicht: row.startgewicht,
-        endgewicht:   row.endgewicht,
-        grassilage:   row.grassilage,
-        silphie_gps:  row.silphie_gps,
-        schrot:       row.schrot,
-        kartoffeln:   row.kartoffeln,
-        befuellung:   row.befuellung,
-        mais:         row.mais,
-      };
-
-      for (const [key, val] of Object.entries(fields)) {
-        const input = document.createElement("input");
-        input.type  = "hidden";
-        input.name  = key;
-        input.value = val;
-        form.appendChild(input);
-      }
-
-      document.body.appendChild(form);
-      form.submit();
-
-      // Warten bis iframe geladen ist (Script hat verarbeitet)
-      iframe.onload = () => {
-        form.remove();
-        resolve();
-      };
-
-      // Timeout-Fallback nach 3 Sekunden
-      setTimeout(resolve, 3000);
-    });
   }
 
   // ── HELPERS ──────────────────────────────────────────
