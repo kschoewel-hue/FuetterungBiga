@@ -362,6 +362,101 @@
   }
   .config-box .save-btn:hover { background: var(--accent-dark); }
 
+  /* ── Abschnitt-Trennlinie ── */
+  .section-divider {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1rem 0 0.5rem;
+  }
+  .section-divider span {
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink3);
+    white-space: nowrap;
+    font-weight: 500;
+  }
+  .section-divider::before, .section-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .section-divider::before { display: none; }
+
+  /* ── Zutaten-Block ── */
+  .zutat-block {
+    grid-column: 1 / -1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    margin-bottom: 0.5rem;
+  }
+  .zutat-block .zutat-name {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--ink2);
+    letter-spacing: 0.04em;
+    margin-bottom: 0.6rem;
+  }
+  .zutat-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.5rem;
+    align-items: end;
+  }
+  .zutat-row .kg-field input {
+    background: var(--white) !important;
+    border-color: var(--accent) !important;
+    font-weight: 600 !important;
+    color: var(--accent-dark) !important;
+  }
+  .zutat-row label {
+    font-size: 0.62rem;
+    margin-top: 0;
+    margin-bottom: 0.25rem;
+  }
+  .zutat-row input {
+    font-size: 0.82rem;
+    padding: 0.5rem 0.6rem;
+  }
+  .arrow-sep {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 0.3rem;
+    color: var(--ink3);
+    font-size: 0.9rem;
+  }
+
+  /* ── Ergebnis-Felder ── */
+  .result-grid {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    background: var(--accent-dark);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 0.5rem;
+  }
+  .result-grid label {
+    color: #a8d5a2;
+    font-size: 0.65rem;
+    margin-top: 0;
+    letter-spacing: 0.08em;
+  }
+  .result-grid input {
+    background: rgba(255,255,255,0.12) !important;
+    border-color: rgba(255,255,255,0.2) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 1rem !important;
+  }
+
   @media (max-width: 520px) {
     .fields-grid { grid-template-columns: 1fr; }
     .fields-grid .full { grid-column: 1; }
@@ -411,62 +506,138 @@
   </div>
 
   <div class="fields-grid">
-    <div class="full">
+
+    <!-- Abschnitt 1: Allgemein -->
+    <div class="section-divider full"><span>Allgemein</span></div>
+
+    <div>
       <label for="f-uhrzeit">Uhrzeit</label>
       <div style="display:flex;align-items:center;gap:0.4rem;">
         <input type="number" id="f-uhrzeit" min="0" max="23" placeholder="13" style="max-width:80px;">
         <span style="font-family:'DM Mono',monospace;font-size:1rem;color:var(--ink2);font-weight:500;">: 00</span>
       </div>
     </div>
+    <div></div>
 
     <div>
-      <label for="f-start">Startgewicht (kg)</label>
+      <label for="f-start">Startgewicht gesamt (kg)</label>
       <input type="number" id="f-start" placeholder="0" step="0.1" min="0">
     </div>
     <div>
-      <label for="f-end">Endgewicht (kg)</label>
+      <label for="f-end">Endgewicht gesamt (kg)</label>
       <input type="number" id="f-end" placeholder="0" step="0.1" min="0">
     </div>
 
+    <!-- Abschnitt 2: Zutaten -->
+    <div class="section-divider full"><span>Zutaten</span></div>
 
-    <div>
-      <label for="f-gras">Grassilage (kg)</label>
-      <input type="number" id="f-gras" placeholder="0" step="0.1" min="0">
-    </div>
-
-    <div>
-      <label for="f-silphie">Silphie/GPS (kg)</label>
-      <input type="number" id="f-silphie" placeholder="0" step="0.1" min="0">
-    </div>
-    <div>
-      <label for="f-schrot">Schrot (kg)</label>
-      <input type="number" id="f-schrot" placeholder="0" step="0.1" min="0">
-    </div>
-
-    <div class="full">
-      <label for="f-kartoffeln">Kartoffeln (kg)</label>
-      <input type="number" id="f-kartoffeln" placeholder="0" step="0.1" min="0">
-    </div>
-
-    <div class="full">
-      <label for="f-mist">Mist (kg)</label>
-      <input type="number" id="f-mist" placeholder="0" step="0.1" min="0">
+    <!-- Grassilage -->
+    <div class="zutat-block">
+      <div class="zutat-name">Grassilage</div>
+      <div class="zutat-row">
+        <div>
+          <label>Startgewicht</label>
+          <input type="number" id="h-gras-start" placeholder="0" step="0.1" min="0" oninput="calcHelper('gras')">
+        </div>
+        <div>
+          <label>Endgewicht</label>
+          <input type="number" id="h-gras-end" placeholder="0" step="0.1" min="0" oninput="calcHelper('gras')">
+        </div>
+        <div class="kg-field">
+          <label for="f-gras">Ergebnis (kg)</label>
+          <input type="number" id="f-gras" placeholder="0" step="0.1" min="0">
+        </div>
+      </div>
     </div>
 
-    <div style="grid-column:1/-1; border-top:1px solid var(--border); margin: 0.8rem 0 0.2rem; padding-top:0.8rem;">
-      <div style="font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:0.6rem;">Berechnete Felder</div>
+    <!-- Silphie/GPS -->
+    <div class="zutat-block">
+      <div class="zutat-name">Silphie/GPS</div>
+      <div class="zutat-row">
+        <div>
+          <label>Startgewicht</label>
+          <input type="number" id="h-silphie-start" placeholder="0" step="0.1" min="0" oninput="calcHelper('silphie')">
+        </div>
+        <div>
+          <label>Endgewicht</label>
+          <input type="number" id="h-silphie-end" placeholder="0" step="0.1" min="0" oninput="calcHelper('silphie')">
+        </div>
+        <div class="kg-field">
+          <label for="f-silphie">Ergebnis (kg)</label>
+          <input type="number" id="f-silphie" placeholder="0" step="0.1" min="0">
+        </div>
+      </div>
     </div>
 
-    <div>
-      <label for="f-befuellung">Befüllung (kg)</label>
-      <input type="number" id="f-befuellung" placeholder="–" readonly
-        style="background:var(--surface2);color:var(--accent-dark);font-weight:500;cursor:default;">
+    <!-- Schrot -->
+    <div class="zutat-block">
+      <div class="zutat-name">Schrot</div>
+      <div class="zutat-row">
+        <div>
+          <label>Startgewicht</label>
+          <input type="number" id="h-schrot-start" placeholder="0" step="0.1" min="0" oninput="calcHelper('schrot')">
+        </div>
+        <div>
+          <label>Endgewicht</label>
+          <input type="number" id="h-schrot-end" placeholder="0" step="0.1" min="0" oninput="calcHelper('schrot')">
+        </div>
+        <div class="kg-field">
+          <label for="f-schrot">Ergebnis (kg)</label>
+          <input type="number" id="f-schrot" placeholder="0" step="0.1" min="0">
+        </div>
+      </div>
     </div>
-    <div>
-      <label for="f-mais">Mais (kg)</label>
-      <input type="number" id="f-mais" placeholder="–" readonly
-        style="background:var(--surface2);color:var(--accent-dark);font-weight:500;cursor:default;">
+
+    <!-- Kartoffeln -->
+    <div class="zutat-block">
+      <div class="zutat-name">Kartoffeln</div>
+      <div class="zutat-row">
+        <div>
+          <label>Startgewicht</label>
+          <input type="number" id="h-kartoffeln-start" placeholder="0" step="0.1" min="0" oninput="calcHelper('kartoffeln')">
+        </div>
+        <div>
+          <label>Endgewicht</label>
+          <input type="number" id="h-kartoffeln-end" placeholder="0" step="0.1" min="0" oninput="calcHelper('kartoffeln')">
+        </div>
+        <div class="kg-field">
+          <label for="f-kartoffeln">Ergebnis (kg)</label>
+          <input type="number" id="f-kartoffeln" placeholder="0" step="0.1" min="0">
+        </div>
+      </div>
     </div>
+
+    <!-- Mist -->
+    <div class="zutat-block">
+      <div class="zutat-name">Mist</div>
+      <div class="zutat-row">
+        <div>
+          <label>Startgewicht</label>
+          <input type="number" id="h-mist-start" placeholder="0" step="0.1" min="0" oninput="calcHelper('mist')">
+        </div>
+        <div>
+          <label>Endgewicht</label>
+          <input type="number" id="h-mist-end" placeholder="0" step="0.1" min="0" oninput="calcHelper('mist')">
+        </div>
+        <div class="kg-field">
+          <label for="f-mist">Ergebnis (kg)</label>
+          <input type="number" id="f-mist" placeholder="0" step="0.1" min="0">
+        </div>
+      </div>
+    </div>
+
+    <!-- Abschnitt 3: Ergebnis -->
+    <div class="result-grid">
+      <div>
+        <label for="f-befuellung">Befüllung (kg)</label>
+        <input type="number" id="f-befuellung" placeholder="–" readonly style="cursor:default;">
+      </div>
+      <div>
+        <label for="f-mais">Mais (kg)</label>
+        <input type="number" id="f-mais" placeholder="–" readonly style="cursor:default;">
+      </div>
+    </div>
+
   </div>
 
   <div class="form-footer">
@@ -598,6 +769,17 @@
     }
 
     loadEntries();
+  }
+
+  // ── HELPER CALCULATOR ───────────────────────────────
+  function calcHelper(field) {
+    const start = parseFloat(document.getElementById("h-" + field + "-start").value) || 0;
+    const end   = parseFloat(document.getElementById("h-" + field + "-end").value)   || 0;
+    if (start > 0 || end > 0) {
+      const result = parseFloat((end - start).toFixed(2));
+      document.getElementById("f-" + field).value = result >= 0 ? result : 0;
+      recalc();
+    }
   }
 
   // ── RECALC ───────────────────────────────────────────
@@ -746,7 +928,10 @@
   }
 
   function clearFields() {
-    ["f-start","f-end","f-gras","f-silphie","f-schrot","f-kartoffeln","f-mist","f-befuellung","f-mais"]
+    ["f-start","f-end","f-gras","f-silphie","f-schrot","f-kartoffeln","f-mist","f-befuellung","f-mais",
+     "h-gras-start","h-gras-end","h-silphie-start","h-silphie-end",
+     "h-schrot-start","h-schrot-end","h-kartoffeln-start","h-kartoffeln-end",
+     "h-mist-start","h-mist-end"]
       .forEach(id => document.getElementById(id).value = "");
     document.getElementById("f-uhrzeit").value = new Date().getHours();
   }
