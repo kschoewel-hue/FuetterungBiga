@@ -448,6 +448,11 @@
       <input type="number" id="f-kartoffeln" placeholder="0" step="0.1" min="0">
     </div>
 
+    <div class="full">
+      <label for="f-mist">Mist (kg)</label>
+      <input type="number" id="f-mist" placeholder="0" step="0.1" min="0">
+    </div>
+
     <div style="grid-column:1/-1; border-top:1px solid var(--border); margin: 0.8rem 0 0.2rem; padding-top:0.8rem;">
       <div style="font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:0.6rem;">Berechnete Felder</div>
     </div>
@@ -495,12 +500,13 @@
             <th>Silphie/GPS</th>
             <th>Schrot</th>
             <th>Kartoffeln</th>
+            <th>Mist</th>
             <th>Befüllung</th>
             <th>Mais</th>
           </tr>
         </thead>
         <tbody id="records-body">
-          <tr><td colspan="10" class="empty-state">Noch keine Einträge.</td></tr>
+          <tr><td colspan="11" class="empty-state">Noch keine Einträge.</td></tr>
         </tbody>
       </table>
     </div>
@@ -606,7 +612,7 @@
     document.getElementById("f-befuellung").value = parseFloat((end - start).toFixed(2));
     document.getElementById("f-mais").value       = parseFloat(((end - start) - gras - silph - schrot - kart).toFixed(2));
   }
-  ["f-start","f-end","f-gras","f-silphie","f-schrot","f-kartoffeln"]
+  ["f-start","f-end","f-gras","f-silphie","f-schrot","f-kartoffeln","f-mist"]
     .forEach(id => document.getElementById(id).addEventListener("input", recalc));
 
   // ── LOAD ENTRIES FROM GOOGLE SHEETS ─────────────────
@@ -644,6 +650,7 @@
     const silph      = fval("f-silphie");
     const schrot     = fval("f-schrot");
     const kart       = fval("f-kartoffeln");
+    const mist       = fval("f-mist");
     const befuellung = parseFloat((end - start).toFixed(2));
     const mais       = parseFloat((befuellung - gras - silph - schrot - kart).toFixed(2));
 
@@ -658,6 +665,7 @@
       silphie_gps:   silph,
       schrot:        schrot,
       kartoffeln:    kart,
+      mist:          mist,
       befuellung:    befuellung,
       mais:          mais,
     };
@@ -679,6 +687,7 @@
           silphie_gps:  row.silphie_gps,
           schrot:       row.schrot,
           kartoffeln:   row.kartoffeln,
+          mist:         row.mist,
           befuellung:   row.befuellung,
           mais:         row.mais,
         }).toString();
@@ -737,7 +746,7 @@
   }
 
   function clearFields() {
-    ["f-start","f-end","f-gras","f-silphie","f-schrot","f-kartoffeln","f-befuellung","f-mais"]
+    ["f-start","f-end","f-gras","f-silphie","f-schrot","f-kartoffeln","f-mist","f-befuellung","f-mais"]
       .forEach(id => document.getElementById(id).value = "");
     document.getElementById("f-uhrzeit").value = new Date().getHours();
   }
@@ -802,6 +811,7 @@
           silphie_gps:  round2((parseFloat(ex.silphie_gps)||0) + (parseFloat(e.silphie_gps)||0)),
           schrot:       round2((parseFloat(ex.schrot)||0)      + (parseFloat(e.schrot)||0)),
           kartoffeln:   round2((parseFloat(ex.kartoffeln)||0)  + (parseFloat(e.kartoffeln)||0)),
+          mist:         round2((parseFloat(ex.mist)||0)        + (parseFloat(e.mist)||0)),
           befuellung:   round2((parseFloat(ex.befuellung)||0)  + (parseFloat(e.befuellung)||0)),
           mais:         round2((parseFloat(ex.mais)||0)        + (parseFloat(e.mais)||0)),
         });
@@ -821,7 +831,7 @@
     document.getElementById("btn-clear").disabled  = entries.length === 0;
 
     if (entries.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="10" class="empty-state">Noch keine Einträge.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="11" class="empty-state">Noch keine Einträge.</td></tr>';
       return;
     }
     tbody.innerHTML = entries.map((e, i) =>
@@ -834,6 +844,7 @@
         <td>${e.silphie_gps}</td>
         <td>${e.schrot}</td>
         <td>${e.kartoffeln}</td>
+        <td>${e.mist}</td>
         <td style="color:var(--accent-dark);font-weight:500">${e.befuellung}</td>
         <td style="color:var(--accent-dark);font-weight:500">${e.mais}</td>
       </tr>`
@@ -917,14 +928,14 @@
 
       // Zahlenspalten
       [e.startgewicht, e.endgewicht, e.befuellung, e.mais,
-       e.grassilage, e.silphie_gps, e.schrot, e.kartoffeln]
+       e.grassilage, e.silphie_gps, e.schrot, e.kartoffeln, e.mist]
       .forEach((v, ci) => {
         const addr = XLSX.utils.encode_cell({r, c: ci + 3});
         ws[addr] = { t: "n", v: parseFloat(v) || 0 };
       });
     });
 
-    ws["!ref"] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:entries.length, c:10}});
+    ws["!ref"] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:entries.length, c:11}});
 
     ws["!cols"] = [
       {wch:18},{wch:14},{wch:10},
