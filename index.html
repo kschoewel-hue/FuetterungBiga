@@ -880,12 +880,14 @@
   function exportExcel() {
     if (entries.length === 0) return;
 
+    // Spaltenreihenfolge: Mitarbeiter, Datum, Uhrzeit, Start, End,
+    // Befüllung, Mais, Grassilage, Silphie/GPS, Schrot, Kartoffeln, Mist
     const headers = [
       "Mitarbeiter", "Datum", "Uhrzeit",
       "Startgewicht (kg)", "Endgewicht (kg)",
       "Befüllung (kg)", "Mais (kg)",
-      "Grassilage (kg)",
-      "Silphie/GPS (kg)", "Schrot (kg)", "Kartoffeln (kg)"
+      "Grassilage (kg)", "Silphie/GPS (kg)",
+      "Schrot (kg)", "Kartoffeln (kg)", "Mist (kg)"
     ];
 
     const ws = XLSX.utils.aoa_to_sheet([headers]);
@@ -894,10 +896,9 @@
       const r = idx + 1;
 
       // Mitarbeiter
-      const mAddr = XLSX.utils.encode_cell({r, c: 0});
-      ws[mAddr] = { t: "s", v: e.mitarbeiter };
+      ws[XLSX.utils.encode_cell({r, c: 0})] = { t: "s", v: e.mitarbeiter };
 
-      // Datum → sauber formatieren, dann in Excel-Seriennummer umwandeln
+      // Datum → Excel-Seriennummer
       const datumStr = formatDatum(e.datum);
       let dateVal = null;
       try {
@@ -907,31 +908,28 @@
           dateVal = (utc - Date.UTC(1899,11,30)) / 86400000;
         }
       } catch(_) {}
-      const dAddr = XLSX.utils.encode_cell({r, c: 1});
-      ws[dAddr] = dateVal !== null
+      ws[XLSX.utils.encode_cell({r, c: 1})] = dateVal !== null
         ? { t: "n", v: dateVal, z: "DD.MM.YYYY" }
         : { t: "s", v: datumStr };
 
-      // Uhrzeit → sauber formatieren, dann in Excel-Zeitbruch umwandeln
+      // Uhrzeit → Excel-Zeitbruch
       const uhrzeitStr = formatUhrzeit(e.uhrzeit);
       let timeVal = null;
       try {
         const tp = uhrzeitStr.split(":");
-        if (tp.length >= 2) {
-          timeVal = (parseInt(tp[0],10) * 60 + parseInt(tp[1],10)) / 1440;
-        }
+        if (tp.length >= 2) timeVal = (parseInt(tp[0],10) * 60 + parseInt(tp[1],10)) / 1440;
       } catch(_) {}
-      const tAddr = XLSX.utils.encode_cell({r, c: 2});
-      ws[tAddr] = timeVal !== null
+      ws[XLSX.utils.encode_cell({r, c: 2})] = timeVal !== null
         ? { t: "n", v: timeVal, z: "hh:mm" }
         : { t: "s", v: uhrzeitStr };
 
-      // Zahlenspalten
-      [e.startgewicht, e.endgewicht, e.befuellung, e.mais,
-       e.grassilage, e.silphie_gps, e.schrot, e.kartoffeln, e.mist]
+      // Zahlenspalten in korrekter Reihenfolge (muss 1:1 mit headers übereinstimmen)
+      [e.startgewicht, e.endgewicht,
+       e.befuellung, e.mais,
+       e.grassilage, e.silphie_gps,
+       e.schrot, e.kartoffeln, e.mist]
       .forEach((v, ci) => {
-        const addr = XLSX.utils.encode_cell({r, c: ci + 3});
-        ws[addr] = { t: "n", v: parseFloat(v) || 0 };
+        ws[XLSX.utils.encode_cell({r, c: ci + 3})] = { t: "n", v: parseFloat(v) || 0 };
       });
     });
 
@@ -942,7 +940,7 @@
       {wch:16},{wch:14},
       {wch:14},{wch:12},
       {wch:16},{wch:14},
-      {wch:14},{wch:12},{wch:14}
+      {wch:12},{wch:14},{wch:12}
     ];
 
     const wb = XLSX.utils.book_new();
