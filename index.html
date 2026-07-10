@@ -791,8 +791,9 @@
     const silph  = parseFloat(document.getElementById("f-silphie").value)    || 0;
     const schrot = parseFloat(document.getElementById("f-schrot").value)     || 0;
     const kart   = parseFloat(document.getElementById("f-kartoffeln").value) || 0;
+    const mist   = parseFloat(document.getElementById("f-mist").value)       || 0;
     document.getElementById("f-befuellung").value = parseFloat((end - start).toFixed(2));
-    document.getElementById("f-mais").value       = parseFloat(((end - start) - gras - silph - schrot - kart).toFixed(2));
+    document.getElementById("f-mais").value       = parseFloat(((end - start) - gras - silph - schrot - kart - mist).toFixed(2));
   }
   ["f-start","f-end","f-gras","f-silphie","f-schrot","f-kartoffeln","f-mist"]
     .forEach(id => document.getElementById(id).addEventListener("input", recalc));
@@ -834,7 +835,7 @@
     const kart       = fval("f-kartoffeln");
     const mist       = fval("f-mist");
     const befuellung = parseFloat((end - start).toFixed(2));
-    const mais       = parseFloat((befuellung - gras - silph - schrot - kart).toFixed(2));
+    const mais       = parseFloat((befuellung - gras - silph - schrot - kart - mist).toFixed(2));
 
     const row = {
       mitarbeiter:   currentUser,
