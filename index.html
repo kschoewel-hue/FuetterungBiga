@@ -1,131 +1,1168 @@
-// ============================================================
-//  Google Apps Script – Aufzeichnungen Einfüttern
-// ============================================================
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aufzeichnungen Einfüttern</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap');
 
-const SHEET_NAME = "Einträge";
-
-const HEADERS = [
-  "Mitarbeiter", "Datum", "Uhrzeit",
-  "Startgewicht (kg)", "Endgewicht (kg)",
-  "Grassilage (kg)", "Silphie/GPS (kg)",
-  "Schrot (kg)", "Kartoffeln (kg)", "Mist (kg)",
-  "Befüllung (kg)", "Mais (kg)", "Notizen"
-];
-
-function getSheet() {
-  const ss    = SpreadsheetApp.getActiveSpreadsheet();
-  let   sheet = ss.getSheetByName(SHEET_NAME);
-  if (!sheet) {
-    sheet = ss.insertSheet(SHEET_NAME);
-    sheet.appendRow(HEADERS);
-    sheet.setFrozenRows(1);
-    sheet.getRange(1, 1, 1, HEADERS.length)
-         .setFontWeight("bold")
-         .setBackground("#2a4d27")
-         .setFontColor("#ffffff");
+  :root {
+    --bg: #f5f0e8;
+    --surface: #ede7d9;
+    --surface2: #e2dace;
+    --ink: #1e1a14;
+    --ink2: #5a5244;
+    --ink3: #8a7e6e;
+    --accent: #3d6b3a;
+    --accent-light: #d4e8d2;
+    --accent-dark: #2a4d27;
+    --border: #c8bfaa;
+    --danger: #8b2e1e;
+    --danger-light: #f5e0db;
+    --white: #faf7f2;
+    --shadow: 0 2px 12px rgba(30,26,20,0.10);
   }
-  return sheet;
-}
 
-function corsResponse(data) {
-  return ContentService
-    .createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
-}
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-function formatDatum(val) {
-  if (!val) return "";
-  if (val instanceof Date) {
-    const d = String(val.getDate()).padStart(2, "0");
-    const m = String(val.getMonth() + 1).padStart(2, "0");
-    const y = val.getFullYear();
-    return d + "." + m + "." + y;
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
-  return String(val).trim();
-}
 
-function formatUhrzeit(val) {
-  if (!val) return "";
-  if (val instanceof Date) {
-    const h = String(val.getHours()).padStart(2, "0");
-    const m = String(val.getMinutes()).padStart(2, "0");
-    return h + ":" + m;
+  header {
+    width: 100%;
+    background: var(--ink);
+    color: var(--bg);
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
   }
-  const n = parseFloat(val);
-  if (!isNaN(n) && n >= 0 && n < 1) {
-    const totalMin = Math.round(n * 1440);
-    const h = Math.floor(totalMin / 60);
-    const mn = totalMin % 60;
-    return String(h).padStart(2, "0") + ":" + String(mn).padStart(2, "0");
+  header h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1.15rem;
+    letter-spacing: 0.01em;
   }
-  const s = String(val).trim();
-  const match = s.match(/(\d{1,2}):(\d{2})/);
-  if (match) return match[1].padStart(2, "0") + ":" + match[2];
-  return s;
-}
+  header .user-badge {
+    display: none;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.78rem;
+    color: #a09480;
+  }
+  header .user-badge span { color: var(--bg); font-weight: 500; }
+  header .logout-btn {
+    background: none;
+    border: 1px solid #5a5244;
+    color: #a09480;
+    padding: 0.3rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    transition: all 0.15s;
+  }
+  header .logout-btn:hover { border-color: var(--bg); color: var(--bg); }
 
-function doGet(e) {
-  try {
-    const action = e.parameter.action || "get";
+  .page { display: none; width: 100%; max-width: 560px; padding: 2rem 1rem; }
+  .page.active { display: block; }
 
-    if (action === "get") {
-      const sheet = getSheet();
-      const data  = sheet.getDataRange().getValues();
-      const rows  = [];
-      for (let i = 1; i < data.length; i++) {
-        const r = data[i];
-        if (!r[0]) continue;
-        const uhrzeitRaw = sheet.getRange(i + 1, 3).getDisplayValue();
-        rows.push({
-          mitarbeiter:  r[0],
-          datum:        formatDatum(r[1]),
-          uhrzeit:      uhrzeitRaw,
-          startgewicht: r[3],
-          endgewicht:   r[4],
-          grassilage:   r[5],
-          silphie_gps:  r[6],
-          schrot:       r[7],
-          kartoffeln:   r[8],
-          mist:         r[9],
-          befuellung:   r[10],
-          mais:         r[11],
-          notizen:      r[12],
+  /* ── Setup Banner ── */
+  .setup-banner {
+    background: #fff8e1;
+    border: 1px solid #f0c040;
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.78rem;
+    color: #7a5c00;
+    line-height: 1.6;
+    display: none;
+  }
+  .setup-banner.visible { display: block; }
+  .setup-banner strong { color: #5a4200; }
+
+  /* ── Login Card ── */
+  .login-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2.5rem 2rem;
+    box-shadow: var(--shadow);
+    margin-top: 3rem;
+  }
+  .login-card .brand {
+    font-family: 'Fraunces', serif;
+    font-size: 2rem;
+    font-weight: 300;
+    font-style: italic;
+    color: var(--accent-dark);
+    margin-bottom: 0.25rem;
+  }
+  .login-card .subtitle {
+    font-size: 0.72rem;
+    color: var(--ink3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 2rem;
+  }
+
+  label {
+    display: block;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink3);
+    margin-bottom: 0.4rem;
+    margin-top: 1.2rem;
+  }
+  label:first-of-type { margin-top: 0; }
+
+  input[type="text"],
+  input[type="password"],
+  input[type="number"],
+  input[type="time"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.65rem 0.9rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.9rem;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(61,107,58,0.15); }
+  input.error { border-color: var(--danger); }
+
+  .error-msg { font-size: 0.72rem; color: var(--danger); margin-top: 0.4rem; display: none; }
+  .error-msg.visible { display: block; }
+
+  .btn-primary {
+    display: block;
+    width: 100%;
+    margin-top: 1.8rem;
+    padding: 0.85rem;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Fraunces', serif;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .btn-primary:hover { background: var(--accent-dark); }
+  .btn-primary:active { transform: scale(0.985); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  #page-form { max-width: 640px; }
+
+  .form-header {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 10px 10px 0 0;
+    padding: 1.2rem 1.5rem;
+    border-bottom: none;
+  }
+  .form-header .greeting {
+    font-family: 'Fraunces', serif;
+    font-size: 1.4rem;
+    font-weight: 300;
+    font-style: italic;
+    color: var(--accent-dark);
+  }
+  .form-header .date-display { font-size: 0.7rem; color: var(--ink3); margin-top: 0.2rem; }
+
+  .fields-grid {
+    background: var(--white);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1.5rem;
+  }
+  .fields-grid .full { grid-column: 1 / -1; }
+
+  .form-footer {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0 0 10px 10px;
+    border-top: none;
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .counter-info { font-size: 0.7rem; color: var(--ink3); }
+  .counter-info strong { color: var(--ink2); }
+
+  /* ── Status indicator ── */
+  .sync-status {
+    font-size: 0.68rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .sync-status.ok { background: var(--accent-light); color: var(--accent-dark); }
+  .sync-status.err { background: var(--danger-light); color: var(--danger); }
+  .sync-status.loading { background: var(--surface2); color: var(--ink3); }
+
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--accent);
+    color: #fff;
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    transition: transform 0.3s ease;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { background: var(--danger); }
+
+  .records-section {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-top: 1.5rem;
+    overflow: hidden;
+  }
+  .records-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .records-header h3 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 0.95rem; }
+  .records-header .right { display: flex; align-items: center; gap: 0.5rem; }
+  .count-badge {
+    background: var(--accent-light);
+    color: var(--accent-dark);
+    font-size: 0.7rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  .btn-refresh {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--ink3);
+    font-size: 0.75rem;
+    padding: 0.25rem 0.6rem;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    transition: all 0.15s;
+  }
+  .btn-refresh:hover { border-color: var(--accent); color: var(--accent); }
+
+  .records-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
+  thead th {
+    background: var(--surface);
+    padding: 0.6rem 0.8rem;
+    text-align: left;
+    font-weight: 500;
+    color: var(--ink3);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr { border-bottom: 1px solid var(--surface2); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--bg); }
+  tbody td { padding: 0.55rem 0.8rem; color: var(--ink2); white-space: nowrap; }
+  tbody td:first-child { color: var(--ink); font-weight: 500; }
+  .empty-state { padding: 2rem; text-align: center; color: var(--ink3); font-size: 0.78rem; }
+
+  .export-row { margin-top: 1rem; display: flex; justify-content: flex-end; gap: 0.6rem; }
+
+  .btn-export {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.4rem;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-export:hover { background: var(--accent-dark); }
+  .btn-export:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-clear {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1rem;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--danger);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-clear:hover { border-color: var(--danger); background: var(--danger-light); }
+  .btn-clear:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Script URL config box ── */
+  .config-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    margin-top: 1.5rem;
+    font-size: 0.75rem;
+    color: var(--ink2);
+  }
+  .config-box label { font-size: 0.68rem; margin-top: 0.8rem; }
+  .config-box label:first-of-type { margin-top: 0; }
+  .config-box input { font-size: 0.78rem; padding: 0.4rem 0.7rem; }
+  .config-box .save-btn {
+    margin-top: 0.8rem;
+    padding: 0.4rem 1rem;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+  .config-box .save-btn:hover { background: var(--accent-dark); }
+
+  /* ── Abschnitt-Trennlinie ── */
+  .section-divider {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1rem 0 0.5rem;
+  }
+  .section-divider span {
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink3);
+    white-space: nowrap;
+    font-weight: 500;
+  }
+  .section-divider::before, .section-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .section-divider::before { display: none; }
+
+  /* ── Zutaten-Block ── */
+  .zutat-block {
+    grid-column: 1 / -1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    margin-bottom: 0.5rem;
+  }
+  .zutat-block .zutat-name {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--ink2);
+    letter-spacing: 0.04em;
+    margin-bottom: 0.6rem;
+  }
+  .zutat-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.5rem;
+    align-items: end;
+  }
+  .zutat-row .kg-field input {
+    background: var(--white) !important;
+    border-color: var(--accent) !important;
+    font-weight: 600 !important;
+    color: var(--accent-dark) !important;
+  }
+  .zutat-row label {
+    font-size: 0.62rem;
+    margin-top: 0;
+    margin-bottom: 0.25rem;
+  }
+  .zutat-row input {
+    font-size: 0.82rem;
+    padding: 0.5rem 0.6rem;
+  }
+  .arrow-sep {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 0.3rem;
+    color: var(--ink3);
+    font-size: 0.9rem;
+  }
+
+  /* ── Ergebnis-Felder ── */
+  .result-grid {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    background: var(--accent-dark);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 0.5rem;
+  }
+  .result-grid label {
+    color: #a8d5a2;
+    font-size: 0.65rem;
+    margin-top: 0;
+    letter-spacing: 0.08em;
+  }
+  .result-grid input {
+    background: rgba(255,255,255,0.12) !important;
+    border-color: rgba(255,255,255,0.2) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 1rem !important;
+  }
+
+  @media (max-width: 520px) {
+    .fields-grid { grid-template-columns: 1fr; }
+    .fields-grid .full { grid-column: 1; }
+    header h1 { font-size: 0.95rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🌾 Aufzeichnungen Einfüttern</h1>
+  <div class="user-badge" id="user-badge">
+    <span id="badge-name"></span>
+    <button class="logout-btn" onclick="logout()">Abmelden</button>
+  </div>
+</header>
+
+<!-- ── LOGIN ── -->
+<div class="page active" id="page-login">
+  <div class="login-card">
+    <div class="brand">Willkommen</div>
+    <div class="subtitle">Mitarbeiter-Dateneingabe</div>
+
+    <label for="inp-name">Benutzername</label>
+    <input type="text" id="inp-name" placeholder="Benutzername" autocomplete="off">
+
+    <label for="inp-pw">Passwort</label>
+    <input type="password" id="inp-pw" placeholder="••••••••">
+    <div class="error-msg" id="login-error">Falsches Passwort oder fehlender Benutzername.</div>
+
+    <button class="btn-primary" onclick="doLogin()">Anmelden →</button>
+  </div>
+</div>
+
+<!-- ── FORM ── -->
+<div class="page" id="page-form">
+
+  <div class="setup-banner" id="setup-banner">
+    ⚠️ <strong>Google Sheets noch nicht verbunden.</strong><br>
+    Trage unten die Script-URL ein, damit Daten zentral gespeichert werden.
+    Bis dahin werden Einträge nur lokal auf diesem Gerät gespeichert.
+  </div>
+
+  <div class="form-header">
+    <div class="greeting" id="form-greeting">Hallo, Mitarbeiter</div>
+    <div class="date-display" id="form-date"></div>
+  </div>
+
+  <div class="fields-grid">
+
+    <!-- Abschnitt 1: Allgemein -->
+    <div class="section-divider full"><span>Allgemein</span></div>
+
+    <div>
+      <label for="f-uhrzeit">Uhrzeit</label>
+      <div style="display:flex;align-items:center;gap:0.4rem;">
+        <input type="number" id="f-uhrzeit" min="0" max="23" placeholder="13" style="max-width:80px;">
+        <span style="font-family:'DM Mono',monospace;font-size:1rem;color:var(--ink2);font-weight:500;">: 00</span>
+      </div>
+    </div>
+    <div></div>
+
+    <div class="full">
+      <label for="f-notizen">Notizen</label>
+      <input type="text" id="f-notizen" placeholder="Optionale Notiz…" maxlength="50">
+    </div>
+
+    <div>
+      <label for="f-start">Startgewicht gesamt (kg)</label>
+      <input type="number" id="f-start" placeholder="0" step="0.1" min="0">
+    </div>
+    <div>
+      <label for="f-end">Endgewicht gesamt (kg)</label>
+      <input type="number" id="f-end" placeholder="0" step="0.1" min="0">
+    </div>
+
+    <!-- Abschnitt 2: Zutaten -->
+    <div class="section-divider full"><span>Substrate</span></div>
+
+    <!-- Grassilage -->
+    <div class="zutat-block">
+      <div class="zutat-name">Grassilage</div>
+      <div class="zutat-row">
+        <div>
+          <label>Startgewicht</label>
+          <input type="number" id="h-gras-start" placeholder="0" step="0.1" min="0" oninput="calcHelper('gras')">
+        </div>
+        <div>
+          <label>Endgewicht</label>
+          <input type="number" id="h-gras-end" placeholder="0" step="0.1" min="0" oninput="calcHelper('gras')">
+        </div>
+        <div class="kg-field">
+          <label for="f-gras">Ergebnis (kg)</label>
+          <input type="number" id="f-gras" placeholder="0" step="0.1" min="0">
+        </div>
+      </div>
+    </div>
+
+    <!-- Kartoffeln -->
+    <div class="zutat-block">
+      <div class="zutat-name">Kartoffeln</div>
+      <div class="zutat-row">
+        <div>
+          <label>Startgewicht</label>
+          <input type="number" id="h-kartoffeln-start" placeholder="0" step="0.1" min="0" oninput="calcHelper('kartoffeln')">
+        </div>
+        <div>
+          <label>Endgewicht</label>
+          <input type="number" id="h-kartoffeln-end" placeholder="0" step="0.1" min="0" oninput="calcHelper('kartoffeln')">
+        </div>
+        <div class="kg-field">
+          <label for="f-kartoffeln">Ergebnis (kg)</label>
+          <input type="number" id="f-kartoffeln" placeholder="0" step="0.1" min="0">
+        </div>
+      </div>
+    </div>
+
+    <!-- Silphie/GPS -->
+    <div class="zutat-block">
+      <div class="zutat-name">Silphie/GPS</div>
+      <div class="zutat-row">
+        <div>
+          <label>Startgewicht</label>
+          <input type="number" id="h-silphie-start" placeholder="0" step="0.1" min="0" oninput="calcHelper('silphie')">
+        </div>
+        <div>
+          <label>Endgewicht</label>
+          <input type="number" id="h-silphie-end" placeholder="0" step="0.1" min="0" oninput="calcHelper('silphie')">
+        </div>
+        <div class="kg-field">
+          <label for="f-silphie">Ergebnis (kg)</label>
+          <input type="number" id="f-silphie" placeholder="0" step="0.1" min="0">
+        </div>
+      </div>
+    </div>
+
+    <!-- Mist -->
+    <div class="zutat-block">
+      <div class="zutat-name">Mist</div>
+      <div class="zutat-row">
+        <div>
+          <label>Startgewicht</label>
+          <input type="number" id="h-mist-start" placeholder="0" step="0.1" min="0" oninput="calcHelper('mist')">
+        </div>
+        <div>
+          <label>Endgewicht</label>
+          <input type="number" id="h-mist-end" placeholder="0" step="0.1" min="0" oninput="calcHelper('mist')">
+        </div>
+        <div class="kg-field">
+          <label for="f-mist">Ergebnis (kg)</label>
+          <input type="number" id="f-mist" placeholder="0" step="0.1" min="0">
+        </div>
+      </div>
+    </div>
+
+    <!-- Schrot -->
+    <div class="zutat-block">
+      <div class="zutat-name">Schrot</div>
+      <div class="zutat-row">
+        <div>
+          <label>Startgewicht</label>
+          <input type="number" id="h-schrot-start" placeholder="0" step="0.1" min="0" oninput="calcHelper('schrot')">
+        </div>
+        <div>
+          <label>Endgewicht</label>
+          <input type="number" id="h-schrot-end" placeholder="0" step="0.1" min="0" oninput="calcHelper('schrot')">
+        </div>
+        <div class="kg-field">
+          <label for="f-schrot">Ergebnis (kg)</label>
+          <input type="number" id="f-schrot" placeholder="0" step="0.1" min="0">
+        </div>
+      </div>
+    </div>
+
+    <!-- Abschnitt 3: Ergebnis -->
+    <div class="result-grid">
+      <div>
+        <label for="f-befuellung">Befüllung (kg)</label>
+        <input type="number" id="f-befuellung" placeholder="–" readonly style="cursor:default;">
+      </div>
+      <div>
+        <label for="f-mais">Mais (kg)</label>
+        <input type="number" id="f-mais" placeholder="–" readonly style="cursor:default;">
+      </div>
+    </div>
+
+  </div>
+
+  <div class="form-footer">
+    <div class="counter-info">
+      Einträge: <strong id="entry-count">0</strong>
+      &nbsp;<span class="sync-status loading" id="sync-status">⟳ lädt…</span>
+    </div>
+    <button class="btn-primary" id="btn-save" style="width:auto; margin:0; padding:0.65rem 1.8rem;" onclick="saveEntry()">
+      Eintrag speichern ✓
+    </button>
+  </div>
+
+  <!-- Records Table -->
+  <div class="records-section">
+    <div class="records-header">
+      <h3>Erfasste Einträge</h3>
+      <div class="right">
+        <span class="count-badge" id="table-count">0</span>
+        <button class="btn-refresh" onclick="loadEntries()">↻ Aktualisieren</button>
+      </div>
+    </div>
+    <div class="records-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Mitarbeiter</th>
+            <th>Datum</th>
+            <th>Uhrzeit</th>
+            <th>Grassilage</th>
+            <th>Kartoffeln</th>
+            <th>Silphie/GPS</th>
+            <th>Mist</th>
+            <th>Schrot</th>
+            <th>Befüllung</th>
+            <th>Mais</th>
+            <th>Notizen</th>
+          </tr>
+        </thead>
+        <tbody id="records-body">
+          <tr><td colspan="12" class="empty-state">Noch keine Einträge.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="export-row">
+    <button class="btn-clear" id="btn-clear" onclick="clearAll()" disabled>Alle löschen</button>
+    <button class="btn-export" id="btn-export" onclick="exportExcel()" disabled>
+      ↓ Excel herunterladen
+    </button>
+  </div>
+
+  <!-- Google Script URL Config -->
+  <div class="config-box">
+    <div style="font-size:0.7rem;font-weight:500;color:var(--ink);margin-bottom:0.5rem;">⚙️ Google Sheets Verbindung</div>
+    <label for="cfg-url">Script-URL (aus Google Apps Script)</label>
+    <input type="text" id="cfg-url" placeholder="https://script.google.com/macros/s/…/exec">
+    <button class="save-btn" onclick="saveConfig()">Verbindung speichern</button>
+  </div>
+</div>
+
+<div class="toast" id="toast">✓ Eintrag gespeichert</div>
+
+<script>
+  const PASSWORD      = "Agrar2024";
+  const ADMIN_PASSWORD = "R@us";
+
+  let currentUser = "";
+  let entries     = [];
+  let scriptUrl   = localStorage.getItem("script_url") || "";
+
+  // ── CONFIG ──────────────────────────────────────────
+  function saveConfig() {
+    const url = document.getElementById("cfg-url").value.trim();
+    if (!url) { alert("Bitte eine URL eingeben."); return; }
+    scriptUrl = url;
+    localStorage.setItem("script_url", url);
+    document.getElementById("setup-banner").classList.remove("visible");
+    showToast("✓ Verbindung gespeichert");
+    loadEntries();
+  }
+
+  // ── LOGIN ────────────────────────────────────────────
+  function doLogin() {
+    const name = document.getElementById("inp-name").value.trim();
+    const pw   = document.getElementById("inp-pw").value;
+    const err  = document.getElementById("login-error");
+    if (!name || pw !== PASSWORD) {
+      err.classList.add("visible");
+      if (!name) document.getElementById("inp-name").classList.add("error");
+      if (pw !== PASSWORD) document.getElementById("inp-pw").classList.add("error");
+      return;
+    }
+    err.classList.remove("visible");
+    document.getElementById("inp-name").classList.remove("error");
+    document.getElementById("inp-pw").classList.remove("error");
+    currentUser = name;
+    showForm();
+  }
+  document.getElementById("inp-pw").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+
+  function logout() {
+    currentUser = "";
+    document.getElementById("page-form").classList.remove("active");
+    document.getElementById("page-login").classList.add("active");
+    document.getElementById("user-badge").style.display = "none";
+    document.getElementById("inp-name").value = "";
+    document.getElementById("inp-pw").value   = "";
+  }
+
+  // ── SHOW FORM ────────────────────────────────────────
+  function showForm() {
+    document.getElementById("page-login").classList.remove("active");
+    document.getElementById("page-form").classList.add("active");
+    document.getElementById("user-badge").style.display = "flex";
+    document.getElementById("badge-name").textContent   = currentUser;
+    document.getElementById("form-greeting").textContent = "Hallo, " + currentUser;
+
+    const now = new Date();
+    document.getElementById("form-date").textContent =
+      now.toLocaleDateString("de-DE", { weekday:"long", day:"numeric", month:"long", year:"numeric" });
+    document.getElementById("f-uhrzeit").value = now.getHours();
+
+    if (scriptUrl) {
+      document.getElementById("cfg-url").value = scriptUrl;
+      document.getElementById("setup-banner").classList.remove("visible");
+    } else {
+      document.getElementById("setup-banner").classList.add("visible");
+    }
+
+    loadEntries();
+  }
+
+  // ── HELPER CALCULATOR ───────────────────────────────
+  function calcHelper(field) {
+    const start = parseFloat(document.getElementById("h-" + field + "-start").value) || 0;
+    const end   = parseFloat(document.getElementById("h-" + field + "-end").value)   || 0;
+    if (start > 0 || end > 0) {
+      const result = parseFloat((end - start).toFixed(2));
+      document.getElementById("f-" + field).value = result >= 0 ? result : 0;
+      recalc();
+    }
+  }
+
+  // ── RECALC ───────────────────────────────────────────
+  function recalc() {
+    const start  = parseFloat(document.getElementById("f-start").value)     || 0;
+    const end    = parseFloat(document.getElementById("f-end").value)        || 0;
+
+    const gras   = parseFloat(document.getElementById("f-gras").value)       || 0;
+    const silph  = parseFloat(document.getElementById("f-silphie").value)    || 0;
+    const schrot = parseFloat(document.getElementById("f-schrot").value)     || 0;
+    const kart   = parseFloat(document.getElementById("f-kartoffeln").value) || 0;
+    const mist   = parseFloat(document.getElementById("f-mist").value)       || 0;
+    document.getElementById("f-befuellung").value = parseFloat((end - start).toFixed(2));
+    document.getElementById("f-mais").value       = parseFloat(((end - start) - gras - silph - schrot - kart - mist).toFixed(2));
+  }
+  ["f-start","f-end","f-gras","f-silphie","f-schrot","f-kartoffeln","f-mist"]
+    .forEach(id => document.getElementById(id).addEventListener("input", recalc));
+
+  // ── LOAD ENTRIES FROM GOOGLE SHEETS ─────────────────
+  async function loadEntries() {
+    setSyncStatus("loading", "⟳ lädt…");
+    if (!scriptUrl) {
+      // fallback: local storage
+      entries = JSON.parse(localStorage.getItem("futter_entries") || "[]");
+      renderTable();
+      setSyncStatus("err", "⚠ lokal");
+      return;
+    }
+    try {
+      const res  = await fetch(scriptUrl + "?action=get", { redirect: "follow" });
+      const data = await res.json();
+      if (data.status === "ok") {
+        entries = mergeByDate(data.rows);
+        renderTable();
+        setSyncStatus("ok", "✓ verbunden");
+      } else {
+        throw new Error(data.message);
+      }
+    } catch(e) {
+      console.error(e);
+      setSyncStatus("err", "⚠ Fehler");
+      showToast("Verbindungsfehler – prüfe die Script-URL", true);
+    }
+  }
+
+  // ── SAVE ENTRY ───────────────────────────────────────
+  async function saveEntry() {
+    const start      = fval("f-start");
+    const end        = fval("f-end");
+    const gras       = fval("f-gras");
+    const silph      = fval("f-silphie");
+    const schrot     = fval("f-schrot");
+    const kart       = fval("f-kartoffeln");
+    const mist       = fval("f-mist");
+    const befuellung = parseFloat((end - start).toFixed(2));
+    const mais       = parseFloat((befuellung - gras - silph - schrot - kart - mist).toFixed(2));
+
+    const row = {
+      mitarbeiter:   currentUser,
+      datum:         new Date().toLocaleDateString("de-DE"),
+      uhrzeit:       String(document.getElementById("f-uhrzeit").value).padStart(2,"0") + ":00",
+      startgewicht:  start,
+      endgewicht:    end,
+
+      grassilage:    gras,
+      silphie_gps:   silph,
+      schrot:        schrot,
+      kartoffeln:    kart,
+      mist:          mist,
+      befuellung:    befuellung,
+      mais:          mais,
+      notizen:       document.getElementById("f-notizen").value.trim(),
+    };
+
+    const btn = document.getElementById("btn-save");
+    btn.disabled = true;
+    btn.textContent = "Speichern…";
+
+    // Eintrag ans Script senden – Zusammenführung passiert serverseitig
+    if (scriptUrl) {
+      try {
+        const params = "?action=append&" + new URLSearchParams({
+          mitarbeiter:  row.mitarbeiter,
+          datum:        row.datum,
+          uhrzeit:      row.uhrzeit,
+          startgewicht: row.startgewicht,
+          endgewicht:   row.endgewicht,
+          grassilage:   row.grassilage,
+          silphie_gps:  row.silphie_gps,
+          schrot:       row.schrot,
+          kartoffeln:   row.kartoffeln,
+          mist:         row.mist,
+          befuellung:   row.befuellung,
+          mais:         row.mais,
+          notizen:      row.notizen,
+        }).toString();
+
+        // Automatisch bis zu 3 Versuche (wegen Google 302-Weiterleitung)
+        let success = false;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            const res  = await fetch(scriptUrl + params);
+            const data = await res.json();
+            if (data.status === "ok") { success = true; break; }
+          } catch(_) {}
+          if (attempt < 3) await new Promise(r => setTimeout(r, 800));
+        }
+        if (!success) throw new Error("Speichern fehlgeschlagen nach 3 Versuchen");
+        showToast("✓ Eintrag gespeichert");
+        await loadEntries();
+      } catch(e) {
+        showToast("⚠ Fehler beim Speichern!", true);
+        console.error(e);
+      }
+    } else {
+      // Fallback lokal
+      const todayStr = row.datum;
+      const existingIdx = entries.findIndex(e => formatDatum(e.datum) === formatDatum(todayStr));
+      if (existingIdx !== -1) {
+        const ex = entries[existingIdx];
+        entries[existingIdx] = {
+          ...ex,
+          mitarbeiter: row.mitarbeiter,
+          startgewicht: "", endgewicht: "",
+          grassilage:  parseFloat((parseFloat(ex.grassilage)||0)  + (parseFloat(row.grassilage)||0)).toFixed(2),
+          silphie_gps: parseFloat((parseFloat(ex.silphie_gps)||0) + (parseFloat(row.silphie_gps)||0)).toFixed(2),
+          schrot:      parseFloat((parseFloat(ex.schrot)||0)      + (parseFloat(row.schrot)||0)).toFixed(2),
+          kartoffeln:  parseFloat((parseFloat(ex.kartoffeln)||0)  + (parseFloat(row.kartoffeln)||0)).toFixed(2),
+          befuellung:  parseFloat((parseFloat(ex.befuellung)||0)  + (parseFloat(row.befuellung)||0)).toFixed(2),
+          mais:        parseFloat((parseFloat(ex.mais)||0)        + (parseFloat(row.mais)||0)).toFixed(2),
+        };
+        showToast("✓ Tageseinträge zusammengeführt");
+      } else {
+        entries.push({ ...row });
+        showToast("✓ Eintrag gespeichert");
+      }
+      localStorage.setItem("futter_entries", JSON.stringify(entries));
+      renderTable();
+    }
+
+    btn.disabled    = false;
+    btn.textContent = "Eintrag speichern ✓";
+    clearFields();
+  }
+
+  function fval(id) {
+    const el = document.getElementById(id);
+    return el.type === "number" ? (parseFloat(el.value) || 0) : el.value;
+  }
+
+  function clearFields() {
+    ["f-start","f-end","f-gras","f-silphie","f-schrot","f-kartoffeln","f-mist","f-befuellung","f-mais",
+     "h-gras-start","h-gras-end","h-silphie-start","h-silphie-end",
+     "h-schrot-start","h-schrot-end","h-kartoffeln-start","h-kartoffeln-end",
+     "h-mist-start","h-mist-end","f-notizen"]
+      .forEach(id => document.getElementById(id).value = "");
+    document.getElementById("f-uhrzeit").value = new Date().getHours();
+  }
+
+  // ── FORMAT HELPERS ───────────────────────────────────
+  // Datum: beliebiges Format → "TT.MM.JJJJ"
+  function formatDatum(raw) {
+    if (!raw) return "";
+    const s = String(raw).trim();
+    // Bereits tt.mm.jjjj
+    if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(s)) return s;
+    // ISO yyyy-mm-dd oder yyyy-mm-ddThh:mm...
+    const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return iso[3] + "." + iso[2] + "." + iso[1];
+    // JS Date string (z.B. "Sun Mar 15 2026...")
+    const d = new Date(s);
+    if (!isNaN(d)) return d.getDate().toString().padStart(2,"0") + "." +
+                          (d.getMonth()+1).toString().padStart(2,"0") + "." +
+                          d.getFullYear();
+    return s;
+  }
+
+  // Uhrzeit: beliebiges Format → "HH:MM"
+  function formatUhrzeit(raw) {
+    if (!raw) return "";
+    const s = String(raw).trim();
+    // Bereits hh:mm oder hh:mm:ss
+    const hm = s.match(/^(\d{1,2}):(\d{2})/);
+    if (hm) return hm[1].padStart(2,"0") + ":" + hm[2];
+    // Excel-Zeitbruch (0..1)
+    const n = parseFloat(s);
+    if (!isNaN(n) && n >= 0 && n < 1) {
+      const totalMin = Math.round(n * 1440);
+      const h = Math.floor(totalMin / 60);
+      const m = totalMin % 60;
+      return h.toString().padStart(2,"0") + ":" + m.toString().padStart(2,"0");
+    }
+    // ISO mit Zeit
+    const iso = s.match(/T(\d{2}):(\d{2})/);
+    if (iso) return iso[1] + ":" + iso[2];
+    return s;
+  }
+
+  // ── MERGE ENTRIES BY DATE ────────────────────────────
+  function mergeByDate(rows) {
+    const map = new Map();
+    for (const e of rows) {
+      const key = formatDatum(e.datum);
+      if (!map.has(key)) {
+        // Erster Eintrag des Tages
+        map.set(key, { ...e });
+      } else {
+        // Weiterer Eintrag: zusammenführen
+        const ex = map.get(key);
+        map.set(key, {
+          mitarbeiter:  e.mitarbeiter,           // Mitarbeiter vom letzten Eintrag
+          datum:        ex.datum,
+          uhrzeit:      ex.uhrzeit,              // Uhrzeit vom ersten Eintrag
+          startgewicht: "",
+          endgewicht:   "",
+          grassilage:   round2((parseFloat(ex.grassilage)||0)  + (parseFloat(e.grassilage)||0)),
+          silphie_gps:  round2((parseFloat(ex.silphie_gps)||0) + (parseFloat(e.silphie_gps)||0)),
+          schrot:       round2((parseFloat(ex.schrot)||0)      + (parseFloat(e.schrot)||0)),
+          kartoffeln:   round2((parseFloat(ex.kartoffeln)||0)  + (parseFloat(e.kartoffeln)||0)),
+          mist:         round2((parseFloat(ex.mist)||0)        + (parseFloat(e.mist)||0)),
+          befuellung:   round2((parseFloat(ex.befuellung)||0)  + (parseFloat(e.befuellung)||0)),
+          mais:         round2((parseFloat(ex.mais)||0)        + (parseFloat(e.mais)||0)),
+          notizen:      [ex.notizen, e.notizen].filter(Boolean).join(" | "),
         });
       }
-      return corsResponse({ status: "ok", rows });
     }
-
-    if (action === "append") {
-      const p     = e.parameter;
-      const sheet = getSheet();
-      sheet.appendRow([
-        p.mitarbeiter, p.datum, p.uhrzeit,
-        p.startgewicht, p.endgewicht,
-        p.grassilage, p.silphie_gps,
-        p.schrot, p.kartoffeln, p.mist,
-        p.befuellung, p.mais, p.notizen || "",
-      ]);
-      const lastRow = sheet.getLastRow();
-      const uc = sheet.getRange(lastRow, 3);
-      uc.setValue(p.uhrzeit);
-      uc.setNumberFormat("@");
-      return corsResponse({ status: "ok" });
-    }
-
-    if (action === "clear") {
-      const sheet   = getSheet();
-      const lastRow = sheet.getLastRow();
-      if (lastRow > 1) sheet.deleteRows(2, lastRow - 1);
-      return corsResponse({ status: "ok" });
-    }
-
-    return corsResponse({ status: "error", message: "Unbekannte Aktion" });
-
-  } catch(err) {
-    return corsResponse({ status: "error", message: err.toString() });
+    return Array.from(map.values());
   }
-}
 
-function doPost(e) {
-  return doGet(e);
-}
+  function round2(n) { return parseFloat(n.toFixed(2)); }
+
+  // ── RENDER TABLE ─────────────────────────────────────
+  function renderTable() {
+    const tbody = document.getElementById("records-body");
+    document.getElementById("entry-count").textContent = entries.length;
+    document.getElementById("table-count").textContent = entries.length;
+    document.getElementById("btn-export").disabled = entries.length === 0;
+    document.getElementById("btn-clear").disabled  = entries.length === 0;
+
+    if (entries.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="12" class="empty-state">Noch keine Einträge.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = entries.map((e, i) =>
+      `<tr>
+        <td>${i + 1}</td>
+        <td>${e.mitarbeiter}</td>
+        <td>${formatDatum(e.datum)}</td>
+        <td>${formatUhrzeit(e.uhrzeit)}</td>
+        <td>${e.grassilage}</td>
+        <td>${e.kartoffeln}</td>
+        <td>${e.silphie_gps}</td>
+        <td>${e.mist}</td>
+        <td>${e.schrot}</td>
+        <td style="color:var(--accent-dark);font-weight:500">${e.befuellung}</td>
+        <td style="color:var(--accent-dark);font-weight:500">${e.mais}</td>
+        <td>${e.notizen || ''}</td>
+      </tr>`
+    ).join("");
+  }
+
+  // ── CLEAR ALL ────────────────────────────────────────
+  async function clearAll() {
+    const pw = prompt("Admin-Passwort eingeben:");
+    if (pw === null) return;
+    if (pw !== ADMIN_PASSWORD) { alert("Falsches Passwort."); return; }
+    if (!confirm("Wirklich alle " + entries.length + " Einträge unwiderruflich löschen?")) return;
+
+    if (scriptUrl) {
+      try {
+        const res  = await fetch(scriptUrl + "?action=clear");
+        const data = await res.json();
+        if (data.status !== "ok") throw new Error(data.message);
+        entries = [];
+        renderTable();
+        showToast("✓ Alle Einträge gelöscht");
+      } catch(e) {
+        showToast("⚠ Fehler beim Löschen!", true);
+      }
+    } else {
+      entries = [];
+      localStorage.removeItem("futter_entries");
+      renderTable();
+    }
+  }
+
+  // ── EXPORT EXCEL ─────────────────────────────────────
+  function exportExcel() {
+    if (entries.length === 0) return;
+
+    // Spaltenreihenfolge: Mitarbeiter, Datum, Uhrzeit, Start, End,
+    // Befüllung, Mais, Grassilage, Silphie/GPS, Schrot, Kartoffeln, Mist
+    const headers = [
+      "Mitarbeiter", "Datum", "Uhrzeit",
+      "Startgewicht (kg)", "Endgewicht (kg)",
+      "Befüllung (kg)", "Mais (kg)", "Notizen",
+      "Grassilage (kg)", "Kartoffeln (kg)",
+      "Silphie/GPS (kg)", "Mist (kg)", "Schrot (kg)"
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet([headers]);
+
+    entries.forEach((e, idx) => {
+      const r = idx + 1;
+
+      // Mitarbeiter
+      ws[XLSX.utils.encode_cell({r, c: 0})] = { t: "s", v: e.mitarbeiter };
+
+      // Datum → Excel-Seriennummer
+      const datumStr = formatDatum(e.datum);
+      let dateVal = null;
+      try {
+        const p = datumStr.split(".");
+        if (p.length === 3) {
+          const utc = Date.UTC(parseInt(p[2],10), parseInt(p[1],10)-1, parseInt(p[0],10));
+          dateVal = (utc - Date.UTC(1899,11,30)) / 86400000;
+        }
+      } catch(_) {}
+      ws[XLSX.utils.encode_cell({r, c: 1})] = dateVal !== null
+        ? { t: "n", v: dateVal, z: "DD.MM.YYYY" }
+        : { t: "s", v: datumStr };
+
+      // Uhrzeit → Excel-Zeitbruch
+      const uhrzeitStr = formatUhrzeit(e.uhrzeit);
+      let timeVal = null;
+      try {
+        const tp = uhrzeitStr.split(":");
+        if (tp.length >= 2) timeVal = (parseInt(tp[0],10) * 60 + parseInt(tp[1],10)) / 1440;
+      } catch(_) {}
+      ws[XLSX.utils.encode_cell({r, c: 2})] = timeVal !== null
+        ? { t: "n", v: timeVal, z: "hh:mm" }
+        : { t: "s", v: uhrzeitStr };
+
+      // Zahlenspalten in korrekter Reihenfolge (muss 1:1 mit headers übereinstimmen)
+      [e.startgewicht, e.endgewicht,
+       e.befuellung, e.mais,
+       e.grassilage, e.kartoffeln,
+       e.silphie_gps, e.mist, e.schrot]
+      .forEach((v, ci) => {
+        ws[XLSX.utils.encode_cell({r, c: ci + 3})] = { t: "n", v: parseFloat(v) || 0 };
+      });
+      // Notizen als Text
+      ws[XLSX.utils.encode_cell({r, c: 11})] = { t: "s", v: e.notizen || "" };
+    });
+
+    ws["!ref"] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:entries.length, c:12}});
+
+    ws["!cols"] = [
+      {wch:18},{wch:14},{wch:10},
+      {wch:16},{wch:14},
+      {wch:14},{wch:12},
+      {wch:16},{wch:14},
+      {wch:12},{wch:14},{wch:12},{wch:30}
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Einfüttern");
+    XLSX.writeFile(wb, `einfuettern_${new Date().toISOString().slice(0,10)}.xlsx`);
+  }
+
+  // ── HELPERS ──────────────────────────────────────────
+  function setSyncStatus(type, text) {
+    const el = document.getElementById("sync-status");
+    el.className = "sync-status " + type;
+    el.textContent = text;
+  }
+
+  function showToast(msg, isError = false) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.className = "toast" + (isError ? " error" : "");
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 2500);
+  }
+
+  // Pre-fill saved URL
+  if (scriptUrl) document.getElementById("cfg-url").value = scriptUrl;
+</script>
+</body>
+</html>
