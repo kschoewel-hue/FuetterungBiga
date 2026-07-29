@@ -1021,7 +1021,9 @@
   function renderTable() {
     const tbody = document.getElementById("records-body");
     document.getElementById("entry-count").textContent = entries.length;
-    document.getElementById("table-count").textContent = entries.length;
+    document.getElementById("table-count").textContent = entries.length > 10
+      ? "letzte 10 von " + entries.length
+      : entries.length;
     document.getElementById("btn-export").disabled = entries.length === 0;
     document.getElementById("btn-clear").disabled  = entries.length === 0;
 
@@ -1029,7 +1031,9 @@
       tbody.innerHTML = '<tr><td colspan="12" class="empty-state">Noch keine Einträge.</td></tr>';
       return;
     }
-    tbody.innerHTML = entries.map((e, i) =>
+    // Nur die letzten 10 Einträge anzeigen
+    const display = entries.slice(-10);
+    tbody.innerHTML = display.map((e, i) =>
       `<tr>
         <td>${i + 1}</td>
         <td>${e.mitarbeiter}</td>
