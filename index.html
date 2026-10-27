@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Aufzeichnungen Einfüttern</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap');
 
@@ -1165,11 +1165,19 @@
   }
 
   // ── EXPORT EXCEL ─────────────────────────────────────
+  // Auf volle Zehner runden (2072 → 2070, 2026 → 2030)
+  function rund10(v) {
+    const n = Math.round((parseFloat(v) || 0) / 10) * 10;
+    return n === 0 ? 0 : n;   // vermeidet "-0"
+  }
+
   function exportExcel() {
     if (entries.length === 0) return;
 
-    // Spaltenreihenfolge: Mitarbeiter, Datum, Uhrzeit, Start, End,
-    // Befüllung, Mais, Grassilage, Silphie/GPS, Schrot, Kartoffeln, Mist
+    const MONATE = ["Januar","Februar","März","April","Mai","Juni",
+                    "Juli","August","September","Oktober","November","Dezember"];
+
+    // Spaltenreihenfolge (muss 1:1 mit den Werten unten übereinstimmen)
     const headers = [
       "Mitarbeiter", "Datum", "Uhrzeit",
       "Startgewicht (kg)", "Endgewicht (kg)",
@@ -1177,54 +1185,96 @@
       "Grassilage (kg)", "Kartoffeln (kg)",
       "Silphie/GPS (kg)", "Mist (kg)", "Schrot (kg)", "Notizen"
     ];
+    const NCOLS = headers.length;
+    const enc   = (r, c) => XLSX.utils.encode_cell({ r, c });
+
+    // Einträge vorbereiten und nach Datum sortieren
+    // (Reihenfolge innerhalb eines Tages bleibt erhalten)
+    const prepared = entries.map((e, idx) => {
+      const datumStr = formatDatum(e.datum);
+      const p = datumStr.split(".");
+      let dateVal = null, monthKey = null, monthLabel = "";
+      if (p.length === 3) {
+        const d = parseInt(p[0], 10), m = parseInt(p[1], 10), y = parseInt(p[2], 10);
+        if (d && m >= 1 && m <= 12 && y) {
+          dateVal    = (Date.UTC(y, m - 1, d) - Date.UTC(1899, 11, 30)) / 86400000;
+          monthKey   = y * 100 + m;
+          monthLabel = MONATE[m - 1] + " " + y;
+        }
+      }
+      return { e, idx, datumStr, dateVal, monthKey, monthLabel };
+    });
+    prepared.sort((a, b) => {
+      if (a.dateVal === null && b.dateVal === null) return a.idx - b.idx;
+      if (a.dateVal === null) return 1;
+      if (b.dateVal === null) return -1;
+      return (a.dateVal - b.dateVal) || (a.idx - b.idx);
+    });
 
     const ws = XLSX.utils.aoa_to_sheet([headers]);
+    let r = 1;                 // nächste freie Zeile (0 = Kopfzeile)
+    let sums = null;           // Monatssummen (Befüllung … Schrot = 7 Werte)
+    let sumKey = null, sumLabel = "";
 
-    entries.forEach((e, idx) => {
-      const r = idx + 1;
+    // Summenzeile: fett, grün hinterlegt, Rahmen oben
+    const sumStyle = {
+      font:   { bold: true },
+      fill:   { patternType: "solid", fgColor: { rgb: "D4E8D2" } },
+      border: { top: { style: "thin", color: { rgb: "2A4D27" } } }
+    };
+    const writeSumRow = () => {
+      for (let c = 0; c < NCOLS; c++) ws[enc(r, c)] = { t: "s", v: "", s: sumStyle };
+      ws[enc(r, 0)] = { t: "s", v: "Summe " + sumLabel, s: sumStyle };
+      sums.forEach((v, i) => { ws[enc(r, 5 + i)] = { t: "n", v, s: sumStyle }; });
+      r++;
+    };
+
+    prepared.forEach(it => {
+      // Monatswechsel → Summenzeile des vorigen Monats einfügen
+      if (sums !== null && it.monthKey !== sumKey) { writeSumRow(); sums = null; }
+      if (sums === null && it.monthKey !== null) {
+        sums = [0, 0, 0, 0, 0, 0, 0]; sumKey = it.monthKey; sumLabel = it.monthLabel;
+      }
+
+      const e = it.e;
 
       // Mitarbeiter
-      ws[XLSX.utils.encode_cell({r, c: 0})] = { t: "s", v: e.mitarbeiter };
+      ws[enc(r, 0)] = { t: "s", v: e.mitarbeiter };
 
-      // Datum → Excel-Seriennummer
-      const datumStr = formatDatum(e.datum);
-      let dateVal = null;
-      try {
-        const p = datumStr.split(".");
-        if (p.length === 3) {
-          const utc = Date.UTC(parseInt(p[2],10), parseInt(p[1],10)-1, parseInt(p[0],10));
-          dateVal = (utc - Date.UTC(1899,11,30)) / 86400000;
-        }
-      } catch(_) {}
-      ws[XLSX.utils.encode_cell({r, c: 1})] = dateVal !== null
-        ? { t: "n", v: dateVal, z: "DD.MM.YYYY" }
-        : { t: "s", v: datumStr };
+      // Datum → Excel-Datum
+      ws[enc(r, 1)] = it.dateVal !== null
+        ? { t: "n", v: it.dateVal, z: "DD.MM.YYYY" }
+        : { t: "s", v: it.datumStr };
 
-      // Uhrzeit → Excel-Zeitbruch
+      // Uhrzeit → Excel-Uhrzeit
       const uhrzeitStr = formatUhrzeit(e.uhrzeit);
       let timeVal = null;
-      try {
-        const tp = uhrzeitStr.split(":");
-        if (tp.length >= 2) timeVal = (parseInt(tp[0],10) * 60 + parseInt(tp[1],10)) / 1440;
-      } catch(_) {}
-      ws[XLSX.utils.encode_cell({r, c: 2})] = timeVal !== null
+      const tp = uhrzeitStr.split(":");
+      if (tp.length >= 2) timeVal = (parseInt(tp[0], 10) * 60 + parseInt(tp[1], 10)) / 1440;
+      ws[enc(r, 2)] = (timeVal !== null && !isNaN(timeVal))
         ? { t: "n", v: timeVal, z: "hh:mm" }
         : { t: "s", v: uhrzeitStr };
 
-      // Zahlenspalten in korrekter Reihenfolge (muss 1:1 mit headers übereinstimmen)
-      [e.startgewicht, e.endgewicht,
-       e.befuellung, e.mais,
-       e.grassilage, e.kartoffeln,
-       e.silphie_gps, e.mist, e.schrot]
-      .forEach((v, ci) => {
-        ws[XLSX.utils.encode_cell({r, c: ci + 3})] = { t: "n", v: parseFloat(v) || 0 };
+      // Zahlenspalten, auf Zehner gerundet
+      const vals = [e.startgewicht, e.endgewicht,
+                    e.befuellung, e.mais,
+                    e.grassilage, e.kartoffeln,
+                    e.silphie_gps, e.mist, e.schrot].map(rund10);
+      vals.forEach((v, i) => {
+        const raw = [e.startgewicht, e.endgewicht][i];
+        // Start/Ende leer lassen (z. B. bei zusammengeführten Tagen)
+        if (i < 2 && (raw === "" || raw === null || raw === undefined)) return;
+        ws[enc(r, 3 + i)] = { t: "n", v };
       });
-      // Notizen als Text
-      ws[XLSX.utils.encode_cell({r, c: 12})] = { t: "s", v: e.notizen || "" };
+      if (sums) vals.slice(2).forEach((v, i) => { sums[i] += v; });
+
+      // Notizen
+      ws[enc(r, 12)] = { t: "s", v: e.notizen || "" };
+      r++;
     });
+    if (sums !== null) writeSumRow();   // Summe des letzten (laufenden) Monats
 
-    ws["!ref"] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:entries.length, c:12}});
-
+    ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: r - 1, c: NCOLS - 1 } });
     ws["!cols"] = [
       {wch:18},{wch:14},{wch:10},
       {wch:16},{wch:14},
