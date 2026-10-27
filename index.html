@@ -457,6 +457,53 @@
     font-size: 1rem !important;
   }
 
+  /* ── Meldungsfenster ── */
+  .dialog-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(30,26,20,0.55);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .dialog-overlay.show { display: flex; }
+  .dialog-box {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 1.8rem 1.6rem 1.4rem;
+    width: 100%;
+    max-width: 380px;
+    text-align: center;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+    border-top: 6px solid var(--accent);
+  }
+  .dialog-box.error { border-top-color: var(--danger); }
+  .dialog-icon {
+    width: 52px; height: 52px;
+    margin: 0 auto 0.8rem;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 1.7rem;
+    line-height: 52px;
+  }
+  .dialog-box.error .dialog-icon { background: var(--danger); }
+  .dialog-title {
+    font-family: 'Fraunces', serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.7rem;
+  }
+  .dialog-text {
+    font-size: 0.82rem;
+    color: var(--ink2);
+    line-height: 1.5;
+    white-space: pre-line;
+  }
+  .dialog-box.error .btn-primary { background: var(--danger); }
+
   @media (max-width: 520px) {
     .fields-grid { grid-template-columns: 1fr; }
     .fields-grid .full { grid-column: 1; }
@@ -705,6 +752,15 @@
   </div>
 </div>
 
+<div class="dialog-overlay" id="dialog-overlay" onclick="if(event.target===this) closeDialog()">
+  <div class="dialog-box" id="dialog-box">
+    <div class="dialog-icon" id="dialog-icon"></div>
+    <div class="dialog-title" id="dialog-title"></div>
+    <div class="dialog-text" id="dialog-text"></div>
+    <button class="btn-primary" onclick="closeDialog()">OK</button>
+  </div>
+</div>
+
 <div class="toast" id="toast">✓ Eintrag gespeichert</div>
 
 <script>
@@ -843,6 +899,22 @@
     const befuellung = parseFloat((end - start).toFixed(2));
     const mais       = parseFloat((befuellung - gras - silph - schrot - kart - mist).toFixed(2));
 
+    // ── Prüfungen vor dem Speichern ──
+    const stundeRaw = document.getElementById("f-uhrzeit").value;
+    const stunde    = parseInt(stundeRaw, 10);
+    if (stundeRaw === "" || isNaN(stunde) || stunde < 0 || stunde > 23) {
+      showDialog("error", "Uhrzeit prüfen", "Bitte eine Stunde zwischen 0 und 23 eingeben.\n\nDer Eintrag wurde NICHT gespeichert.");
+      return;
+    }
+    if (!(end > start)) {
+      showDialog("error", "Gewicht prüfen", "Das Endgewicht gesamt muss größer sein als das Startgewicht gesamt. Bitte beide Werte prüfen.\n\nDer Eintrag wurde NICHT gespeichert.");
+      return;
+    }
+    if (mais < 0) {
+      const ok = confirm("Achtung: Der Mais-Wert ist negativ (" + mais + " kg).\n\nDie Substrate sind zusammen schwerer als die Befüllung. Bitte die Werte prüfen.\n\nTrotzdem speichern?");
+      if (!ok) return;
+    }
+
     const row = {
       mitarbeiter:   currentUser,
       datum:         new Date().toLocaleDateString("de-DE"),
@@ -863,11 +935,17 @@
     const btn = document.getElementById("btn-save");
     btn.disabled = true;
     btn.textContent = "Speichern…";
+    let saved = false;
 
-    // Eintrag ans Script senden – Zusammenführung passiert serverseitig
+    // Eindeutige ID pro Speichervorgang (gleich bei allen Wiederholungen) –
+    // das Script erkennt damit doppelt eingegangene Anfragen
+    const saveId = Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+
+    // Eintrag ans Script senden
     if (scriptUrl) {
       try {
         const params = "?action=append&" + new URLSearchParams({
+          id:           saveId,
           mitarbeiter:  row.mitarbeiter,
           datum:        row.datum,
           uhrzeit:      row.uhrzeit,
@@ -894,10 +972,9 @@
           if (attempt < 3) await new Promise(r => setTimeout(r, 800));
         }
         if (!success) throw new Error("Speichern fehlgeschlagen nach 3 Versuchen");
-        showToast("✓ Eintrag gespeichert");
+        saved = true;
         await loadEntries();
       } catch(e) {
-        showToast("⚠ Fehler beim Speichern!", true);
         console.error(e);
       }
     } else {
@@ -917,18 +994,29 @@
           befuellung:  parseFloat((parseFloat(ex.befuellung)||0)  + (parseFloat(row.befuellung)||0)).toFixed(2),
           mais:        parseFloat((parseFloat(ex.mais)||0)        + (parseFloat(row.mais)||0)).toFixed(2),
         };
-        showToast("✓ Tageseinträge zusammengeführt");
       } else {
         entries.push({ ...row });
-        showToast("✓ Eintrag gespeichert");
       }
       localStorage.setItem("futter_entries", JSON.stringify(entries));
       renderTable();
+      saved = true;
     }
 
     btn.disabled    = false;
     btn.textContent = "Eintrag speichern ✓";
-    clearFields();
+
+    if (saved) {
+      clearFields();
+      showDialog("success", "Eintrag gespeichert",
+        "Datum: " + row.datum + "\n" +
+        "Uhrzeit: " + row.uhrzeit + "\n" +
+        "Befüllung: " + befuellung + " kg\n" +
+        "Mais: " + mais + " kg\n\n" +
+        "Bitte NICHT nochmal speichern.");
+    } else {
+      showDialog("error", "Nicht gespeichert",
+        "Der Eintrag konnte nicht gespeichert werden. Bitte Internetverbindung prüfen und nochmal auf „Eintrag speichern“ klicken.\n\nDeine Eingaben sind noch vorhanden.");
+    }
   }
 
   function fval(id) {
@@ -1148,6 +1236,22 @@
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Einfüttern");
     XLSX.writeFile(wb, `einfuettern_${new Date().toISOString().slice(0,10)}.xlsx`);
+  }
+
+  // ── MELDUNGSFENSTER ──────────────────────────────────
+  let dialogTimer = null;
+  function showDialog(type, title, text) {
+    document.getElementById("dialog-box").className  = "dialog-box " + type;
+    document.getElementById("dialog-icon").textContent  = type === "success" ? "✓" : "⚠";
+    document.getElementById("dialog-title").textContent = title;
+    document.getElementById("dialog-text").textContent  = text;
+    document.getElementById("dialog-overlay").classList.add("show");
+    clearTimeout(dialogTimer);
+    if (type === "success") dialogTimer = setTimeout(closeDialog, 10000);
+  }
+  function closeDialog() {
+    clearTimeout(dialogTimer);
+    document.getElementById("dialog-overlay").classList.remove("show");
   }
 
   // ── HELPERS ──────────────────────────────────────────
