@@ -1085,9 +1085,9 @@
     const headers = [
       "Mitarbeiter", "Datum", "Uhrzeit",
       "Startgewicht (kg)", "Endgewicht (kg)",
-      "Befüllung (kg)", "Mais (kg)", "Notizen",
+      "Befüllung (kg)", "Mais (kg)",
       "Grassilage (kg)", "Kartoffeln (kg)",
-      "Silphie/GPS (kg)", "Mist (kg)", "Schrot (kg)"
+      "Silphie/GPS (kg)", "Mist (kg)", "Schrot (kg)", "Notizen"
     ];
 
     const ws = XLSX.utils.aoa_to_sheet([headers]);
@@ -1132,7 +1132,7 @@
         ws[XLSX.utils.encode_cell({r, c: ci + 3})] = { t: "n", v: parseFloat(v) || 0 };
       });
       // Notizen als Text
-      ws[XLSX.utils.encode_cell({r, c: 11})] = { t: "s", v: e.notizen || "" };
+      ws[XLSX.utils.encode_cell({r, c: 12})] = { t: "s", v: e.notizen || "" };
     });
 
     ws["!ref"] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:entries.length, c:12}});
