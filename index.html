@@ -752,12 +752,12 @@
   </div>
 </div>
 
-<div class="dialog-overlay" id="dialog-overlay" onclick="if(event.target===this) closeDialog()">
+<div class="dialog-overlay" id="dialog-overlay">
   <div class="dialog-box" id="dialog-box">
     <div class="dialog-icon" id="dialog-icon"></div>
     <div class="dialog-title" id="dialog-title"></div>
     <div class="dialog-text" id="dialog-text"></div>
-    <button class="btn-primary" onclick="closeDialog()">OK</button>
+    <button class="btn-primary" id="dialog-btn" onclick="closeDialog()">OK</button>
   </div>
 </div>
 
@@ -1289,15 +1289,16 @@
   }
 
   // ── MELDUNGSFENSTER ──────────────────────────────────
+  // Der Hinweis bleibt offen, bis der Nutzer auf den Button klickt
   let dialogTimer = null;
   function showDialog(type, title, text) {
     document.getElementById("dialog-box").className  = "dialog-box " + type;
     document.getElementById("dialog-icon").textContent  = type === "success" ? "✓" : "⚠";
     document.getElementById("dialog-title").textContent = title;
     document.getElementById("dialog-text").textContent  = text;
+    document.getElementById("dialog-btn").textContent   = type === "success" ? "Hinweis gelesen" : "OK";
     document.getElementById("dialog-overlay").classList.add("show");
     clearTimeout(dialogTimer);
-    if (type === "success") dialogTimer = setTimeout(closeDialog, 10000);
   }
   function closeDialog() {
     clearTimeout(dialogTimer);
