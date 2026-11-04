@@ -547,16 +547,6 @@
     font-weight: 700;
     border-bottom: 2px solid #fff;
   }
-  .dialog-warn {
-    margin-top: 1.1rem;
-    background: #fff4c8;
-    border: 3px solid #c99a00;
-    border-radius: 8px;
-    padding: 0.8rem;
-    font-size: 1.35rem;
-    font-weight: 700;
-    color: #2a2000;
-  }
   .dialog-input {
     margin-top: 1.1rem;
     font-size: 1.5rem !important;
@@ -1122,19 +1112,18 @@
           zeile("Mitarbeiter",         row.mitarbeiter) +
           zeile("Startgewicht gesamt", kgText(start), "group") +
           zeile("Endgewicht gesamt",   kgText(end)) +
+          zeile("Befüllung",           kgText(befuellung), "hl") +
           zeile("Grassilage",          kgText(gras), "group") +
           zeile("Kartoffeln",          kgText(kart)) +
           zeile("Silphie/GPS",         kgText(silph)) +
           zeile("Mist",                kgText(mist)) +
           zeile("Schrot",              kgText(schrot)) +
-          zeile("Befüllung",           kgText(befuellung), "hl") +
-          zeile("Mais",                kgText(mais), "hl") +
+          zeile("Mais",                kgText(mais)) +
           (row.notizen ? zeile("Notizen", row.notizen, "group notiz") : "") +
-        '</table>' +
-        '<div class="dialog-warn">Bitte NICHT nochmal speichern.</div>';
-      // Bleibt offen, bis auf "Hinweis gelesen" geklickt wird
+        '</table>';
+      // Bleibt offen, bis auf den Knopf geklickt wird
       openDialog({ type: "success", title: "Eintrag gespeichert", html,
-                   buttons: [{ label: "Hinweis gelesen", value: "ok", style: "primary" }] });
+                   buttons: [{ label: "Super – alles gespeichert!", value: "ok", style: "primary" }] });
     } else {
       showDialog("error", "Nicht gespeichert",
         "Der Eintrag konnte nicht gespeichert werden. Bitte Internetverbindung prüfen und nochmal auf „Eintrag speichern“ klicken.\n\nDeine Eingaben sind noch vorhanden.");
@@ -1441,7 +1430,7 @@
   function openDialog(opts) {
     const type    = opts.type || "success";
     const buttons = opts.buttons || [{
-      label: type === "success" ? "Hinweis gelesen" : "OK",
+      label: "OK",
       value: "ok",
       style: type === "error" ? "danger" : "primary"
     }];
