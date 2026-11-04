@@ -6,127 +6,131 @@
 <title>Aufzeichnungen Einfüttern</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap');
+  /* Atkinson Hyperlegible: Schrift, die speziell für gute Lesbarkeit entwickelt wurde
+     (klare Unterscheidung von 0/O, 1/l/I usw.) */
+  @import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap');
 
   :root {
     --bg: #f5f0e8;
-    --surface: #ede7d9;
-    --surface2: #e2dace;
-    --ink: #1e1a14;
-    --ink2: #5a5244;
-    --ink3: #8a7e6e;
-    --accent: #3d6b3a;
+    --surface: #ebe4d4;
+    --surface2: #ddd3c2;
+    --ink: #14110c;          /* Haupttext: fast schwarz */
+    --ink2: #2e2820;         /* Nebentext: deutlich dunkler als vorher */
+    --ink3: #4a4136;         /* Beschriftungen: Kontrast ca. 9:1 statt 3,6:1 */
+    --accent: #2f5a2c;
     --accent-light: #d4e8d2;
-    --accent-dark: #2a4d27;
-    --border: #c8bfaa;
-    --danger: #8b2e1e;
-    --danger-light: #f5e0db;
-    --white: #faf7f2;
-    --shadow: 0 2px 12px rgba(30,26,20,0.10);
+    --accent-dark: #1f3d1c;
+    --border: #9c907a;       /* Rahmen kräftiger, Felder besser erkennbar */
+    --danger: #8b1e10;
+    --danger-light: #f8dcd5;
+    --white: #ffffff;
+    --shadow: 0 2px 12px rgba(30,26,20,0.12);
+    --font: 'Atkinson Hyperlegible', 'Segoe UI', Arial, sans-serif;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
+  html { font-size: 18px; }   /* Grundschrift größer (vorher 16px) */
+
   body {
-    font-family: 'DM Mono', monospace;
+    font-family: var(--font);
     background: var(--bg);
     color: var(--ink);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
+    line-height: 1.45;
   }
 
   header {
     width: 100%;
     background: var(--ink);
-    color: var(--bg);
-    padding: 1rem 2rem;
+    color: #fff;
+    padding: 0.9rem 1.2rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 0.6rem;
     position: sticky;
     top: 0;
     z-index: 100;
   }
   header h1 {
     font-family: 'Fraunces', serif;
-    font-weight: 600;
-    font-size: 1.15rem;
-    letter-spacing: 0.01em;
+    font-weight: 700;
+    font-size: 1.2rem;
   }
   header .user-badge {
     display: none;
     align-items: center;
     gap: 0.6rem;
-    font-size: 0.78rem;
-    color: #a09480;
+    font-size: 0.95rem;
+    color: #fff;
   }
-  header .user-badge span { color: var(--bg); font-weight: 500; }
+  header .user-badge span { color: #fff; font-weight: 700; }
   header .logout-btn {
     background: none;
-    border: 1px solid #5a5244;
-    color: #a09480;
-    padding: 0.3rem 0.8rem;
-    border-radius: 4px;
+    border: 2px solid #d8cfbf;
+    color: #fff;
+    padding: 0.4rem 0.9rem;
+    min-height: 40px;
+    border-radius: 6px;
     cursor: pointer;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.72rem;
-    transition: all 0.15s;
+    font-family: var(--font);
+    font-size: 0.9rem;
+    font-weight: 700;
   }
-  header .logout-btn:hover { border-color: var(--bg); color: var(--bg); }
+  header .logout-btn:hover { background: #fff; color: var(--ink); }
 
-  .page { display: none; width: 100%; max-width: 560px; padding: 2rem 1rem; }
+  .page { display: none; width: 100%; max-width: 600px; padding: 1.5rem 1rem; }
   .page.active { display: block; }
 
   /* ── Setup Banner ── */
   .setup-banner {
-    background: #fff8e1;
-    border: 1px solid #f0c040;
+    background: #fff4c8;
+    border: 2px solid #c99a00;
     border-radius: 8px;
     padding: 1rem 1.2rem;
     margin-bottom: 1.5rem;
-    font-size: 0.78rem;
-    color: #7a5c00;
-    line-height: 1.6;
+    font-size: 1rem;
+    color: #3d2e00;
+    line-height: 1.5;
     display: none;
   }
   .setup-banner.visible { display: block; }
-  .setup-banner strong { color: #5a4200; }
+  .setup-banner strong { color: #2a2000; }
 
   /* ── Login Card ── */
   .login-card {
     background: var(--white);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 2.5rem 2rem;
+    padding: 2rem 1.5rem;
     box-shadow: var(--shadow);
-    margin-top: 3rem;
+    margin-top: 2rem;
   }
   .login-card .brand {
     font-family: 'Fraunces', serif;
     font-size: 2rem;
-    font-weight: 300;
-    font-style: italic;
+    font-weight: 700;
     color: var(--accent-dark);
     margin-bottom: 0.25rem;
   }
   .login-card .subtitle {
-    font-size: 0.72rem;
+    font-size: 1rem;
     color: var(--ink3);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
   }
 
+  /* Beschriftungen: normale Schreibweise, fett, gut lesbar (vorher klein + GROSSBUCHSTABEN) */
   label {
     display: block;
-    font-size: 0.7rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--ink3);
-    margin-bottom: 0.4rem;
-    margin-top: 1.2rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--ink2);
+    margin-bottom: 0.35rem;
+    margin-top: 1.1rem;
   }
   label:first-of-type { margin-top: 0; }
 
@@ -135,66 +139,69 @@
   input[type="number"],
   input[type="time"] {
     width: 100%;
-    background: var(--bg);
-    border: 1px solid var(--border);
+    min-height: 48px;
+    background: var(--white);
+    border: 2px solid var(--border);
     border-radius: 6px;
-    padding: 0.65rem 0.9rem;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.9rem;
+    padding: 0.6rem 0.8rem;
+    font-family: var(--font);
+    font-size: 1.15rem;
     color: var(--ink);
     outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
-  input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(61,107,58,0.15); }
-  input.error { border-color: var(--danger); }
+  input::placeholder { color: #8a8070; }
+  input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(47,90,44,0.25); }
+  input.error { border-color: var(--danger); border-width: 3px; }
 
-  .error-msg { font-size: 0.72rem; color: var(--danger); margin-top: 0.4rem; display: none; }
+  .error-msg { font-size: 1rem; font-weight: 700; color: var(--danger); margin-top: 0.5rem; display: none; }
   .error-msg.visible { display: block; }
 
   .btn-primary {
     display: block;
     width: 100%;
-    margin-top: 1.8rem;
-    padding: 0.85rem;
+    margin-top: 1.6rem;
+    padding: 0.9rem;
+    min-height: 52px;
     background: var(--accent);
     color: #fff;
     border: none;
-    border-radius: 6px;
-    font-family: 'Fraunces', serif;
-    font-size: 1rem;
-    font-weight: 600;
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 1.15rem;
+    font-weight: 700;
     cursor: pointer;
     transition: background 0.15s, transform 0.1s;
   }
   .btn-primary:hover { background: var(--accent-dark); }
   .btn-primary:active { transform: scale(0.985); }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+  button:focus-visible { outline: 3px solid #c99a00; outline-offset: 2px; }
 
-  #page-form { max-width: 640px; }
+  #page-form { max-width: 680px; }
 
   .form-header {
     background: var(--white);
     border: 1px solid var(--border);
     border-radius: 10px 10px 0 0;
-    padding: 1.2rem 1.5rem;
+    padding: 1.1rem 1.3rem;
     border-bottom: none;
   }
   .form-header .greeting {
     font-family: 'Fraunces', serif;
-    font-size: 1.4rem;
-    font-weight: 300;
-    font-style: italic;
+    font-size: 1.5rem;
+    font-weight: 700;
     color: var(--accent-dark);
   }
-  .form-header .date-display { font-size: 0.7rem; color: var(--ink3); margin-top: 0.2rem; }
+  .form-header .date-display { font-size: 1rem; color: var(--ink2); margin-top: 0.2rem; }
 
   .fields-grid {
     background: var(--white);
     border: 1px solid var(--border);
-    padding: 1.5rem;
+    padding: 1.3rem;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0 1.5rem;
+    gap: 0 1.2rem;
   }
   .fields-grid .full { grid-column: 1 / -1; }
 
@@ -203,18 +210,21 @@
     border: 1px solid var(--border);
     border-radius: 0 0 10px 10px;
     border-top: none;
-    padding: 1rem 1.5rem;
+    padding: 1rem 1.3rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 0.8rem;
+    flex-wrap: wrap;
   }
-  .counter-info { font-size: 0.7rem; color: var(--ink3); }
-  .counter-info strong { color: var(--ink2); }
+  .counter-info { font-size: 1rem; color: var(--ink2); }
+  .counter-info strong { color: var(--ink); }
 
   /* ── Status indicator ── */
   .sync-status {
-    font-size: 0.68rem;
-    padding: 0.2rem 0.6rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 0.25rem 0.7rem;
     border-radius: 20px;
     display: inline-flex;
     align-items: center;
@@ -222,22 +232,24 @@
   }
   .sync-status.ok { background: var(--accent-light); color: var(--accent-dark); }
   .sync-status.err { background: var(--danger-light); color: var(--danger); }
-  .sync-status.loading { background: var(--surface2); color: var(--ink3); }
+  .sync-status.loading { background: var(--surface2); color: var(--ink2); }
 
   .toast {
     position: fixed;
     bottom: 1.5rem;
     left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: var(--accent);
+    transform: translateX(-50%) translateY(120px);
+    background: var(--accent-dark);
     color: #fff;
-    padding: 0.8rem 1.5rem;
-    border-radius: 8px;
-    font-size: 0.82rem;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    padding: 1rem 1.6rem;
+    border-radius: 10px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     transition: transform 0.3s ease;
     pointer-events: none;
-    white-space: nowrap;
+    max-width: calc(100% - 2rem);
+    text-align: center;
   }
   .toast.show { transform: translateX(-50%) translateY(0); }
   .toast.error { background: var(--danger); }
@@ -250,7 +262,7 @@
     overflow: hidden;
   }
   .records-header {
-    padding: 1rem 1.5rem;
+    padding: 1rem 1.3rem;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
@@ -258,83 +270,86 @@
     gap: 0.5rem;
     flex-wrap: wrap;
   }
-  .records-header h3 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 0.95rem; }
+  .records-header h3 { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.15rem; }
   .records-header .right { display: flex; align-items: center; gap: 0.5rem; }
   .count-badge {
     background: var(--accent-light);
     color: var(--accent-dark);
-    font-size: 0.7rem;
-    padding: 0.2rem 0.6rem;
+    font-size: 0.9rem;
+    padding: 0.25rem 0.7rem;
     border-radius: 20px;
-    font-weight: 500;
+    font-weight: 700;
   }
   .btn-refresh {
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    color: var(--ink3);
-    font-size: 0.75rem;
-    padding: 0.25rem 0.6rem;
+    background: var(--white);
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    color: var(--ink2);
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 0.4rem 0.8rem;
+    min-height: 40px;
     cursor: pointer;
-    font-family: 'DM Mono', monospace;
-    transition: all 0.15s;
+    font-family: var(--font);
   }
   .btn-refresh:hover { border-color: var(--accent); color: var(--accent); }
 
   .records-scroll { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
   thead th {
     background: var(--surface);
-    padding: 0.6rem 0.8rem;
+    padding: 0.65rem 0.8rem;
     text-align: left;
-    font-weight: 500;
-    color: var(--ink3);
-    letter-spacing: 0.04em;
+    font-weight: 700;
+    color: var(--ink);
     white-space: nowrap;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 2px solid var(--border);
   }
   tbody tr { border-bottom: 1px solid var(--surface2); }
+  tbody tr:nth-child(even) { background: #faf7f1; }
   tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: var(--bg); }
-  tbody td { padding: 0.55rem 0.8rem; color: var(--ink2); white-space: nowrap; }
-  tbody td:first-child { color: var(--ink); font-weight: 500; }
-  .empty-state { padding: 2rem; text-align: center; color: var(--ink3); font-size: 0.78rem; }
+  tbody tr:hover { background: var(--accent-light); }
+  tbody td { padding: 0.6rem 0.8rem; color: var(--ink); white-space: nowrap; }
+  tbody td:first-child { font-weight: 700; }
+  .empty-state { padding: 2rem; text-align: center; color: var(--ink2); font-size: 1rem; }
 
-  .export-row { margin-top: 1rem; display: flex; justify-content: flex-end; gap: 0.6rem; }
+  .export-row { margin-top: 1rem; display: flex; justify-content: flex-end; gap: 0.6rem; flex-wrap: wrap; }
 
   .btn-export {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.65rem 1.4rem;
+    padding: 0.7rem 1.4rem;
+    min-height: 48px;
     background: var(--accent);
     color: #fff;
     border: none;
-    border-radius: 6px;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.8rem;
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 1rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: background 0.15s;
   }
   .btn-export:hover { background: var(--accent-dark); }
-  .btn-export:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-export:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .btn-clear {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.65rem 1rem;
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.8rem;
+    padding: 0.7rem 1.1rem;
+    min-height: 48px;
+    background: var(--white);
+    border: 2px solid var(--danger);
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 1rem;
+    font-weight: 700;
     color: var(--danger);
     cursor: pointer;
-    transition: all 0.15s;
   }
-  .btn-clear:hover { border-color: var(--danger); background: var(--danger-light); }
-  .btn-clear:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-clear:hover { background: var(--danger-light); }
+  .btn-clear:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* ── Script URL config box ── */
   .config-box {
@@ -343,21 +358,23 @@
     border-radius: 8px;
     padding: 1rem 1.2rem;
     margin-top: 1.5rem;
-    font-size: 0.75rem;
+    font-size: 1rem;
     color: var(--ink2);
   }
-  .config-box label { font-size: 0.68rem; margin-top: 0.8rem; }
+  .config-box label { font-size: 0.95rem; margin-top: 0.8rem; }
   .config-box label:first-of-type { margin-top: 0; }
-  .config-box input { font-size: 0.78rem; padding: 0.4rem 0.7rem; }
+  .config-box input { font-size: 0.95rem; }
   .config-box .save-btn {
     margin-top: 0.8rem;
-    padding: 0.4rem 1rem;
+    padding: 0.55rem 1.1rem;
+    min-height: 44px;
     background: var(--accent);
     color: #fff;
     border: none;
-    border-radius: 4px;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.75rem;
+    border-radius: 6px;
+    font-family: var(--font);
+    font-size: 1rem;
+    font-weight: 700;
     cursor: pointer;
   }
   .config-box .save-btn:hover { background: var(--accent-dark); }
@@ -368,68 +385,59 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    margin: 1rem 0 0.5rem;
+    margin: 1.2rem 0 0.7rem;
   }
+  .fields-grid > .section-divider:first-child { margin-top: 0; }
   .section-divider span {
-    font-size: 0.68rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--ink3);
+    font-family: 'Fraunces', serif;
+    font-size: 1.2rem;
+    color: var(--accent-dark);
     white-space: nowrap;
-    font-weight: 500;
+    font-weight: 700;
   }
-  .section-divider::before, .section-divider::after {
+  .section-divider::after {
     content: "";
     flex: 1;
-    height: 1px;
+    height: 2px;
     background: var(--border);
   }
-  .section-divider::before { display: none; }
 
   /* ── Zutaten-Block ── */
   .zutat-block {
     grid-column: 1 / -1;
     background: var(--bg);
     border: 1px solid var(--border);
+    border-left: 5px solid var(--accent);
     border-radius: 8px;
     padding: 0.8rem 1rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.7rem;
   }
   .zutat-block .zutat-name {
-    font-size: 0.72rem;
-    font-weight: 500;
-    color: var(--ink2);
-    letter-spacing: 0.04em;
-    margin-bottom: 0.6rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 0.5rem;
   }
   .zutat-row {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 0.5rem;
+    gap: 0.6rem;
     align-items: end;
   }
   .zutat-row .kg-field input {
-    background: var(--white) !important;
+    background: var(--accent-light) !important;
     border-color: var(--accent) !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
     color: var(--accent-dark) !important;
   }
   .zutat-row label {
-    font-size: 0.62rem;
+    font-size: 0.9rem;
     margin-top: 0;
     margin-bottom: 0.25rem;
   }
   .zutat-row input {
-    font-size: 0.82rem;
+    font-size: 1.1rem;
     padding: 0.5rem 0.6rem;
-  }
-  .arrow-sep {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding-bottom: 0.3rem;
-    color: var(--ink3);
-    font-size: 0.9rem;
   }
 
   /* ── Ergebnis-Felder ── */
@@ -441,73 +449,161 @@
     background: var(--accent-dark);
     border-radius: 8px;
     padding: 1rem;
-    margin-top: 0.5rem;
+    margin-top: 0.7rem;
   }
   .result-grid label {
-    color: #a8d5a2;
-    font-size: 0.65rem;
+    color: #ffffff;
+    font-size: 1rem;
     margin-top: 0;
-    letter-spacing: 0.08em;
   }
   .result-grid input {
-    background: rgba(255,255,255,0.12) !important;
-    border-color: rgba(255,255,255,0.2) !important;
+    background: rgba(255,255,255,0.15) !important;
+    border-color: rgba(255,255,255,0.45) !important;
     color: #ffffff !important;
     font-weight: 700 !important;
-    font-size: 1rem !important;
+    font-size: 1.35rem !important;
   }
+  .result-grid input::placeholder { color: #d8e8d6; }
 
-  /* ── Meldungsfenster ── */
+  /* Uhrzeit-Zeile */
+  .uhrzeit-wrap { display: flex; align-items: center; gap: 0.5rem; }
+  .uhrzeit-wrap input { max-width: 90px; }
+  .uhrzeit-wrap span { font-size: 1.15rem; font-weight: 700; color: var(--ink); }
+
+  /* ── Meldungsfenster (groß, für alle Hinweise und Rückfragen) ── */
   .dialog-overlay {
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(30,26,20,0.55);
+    background: rgba(20,17,12,0.75);
     z-index: 1000;
     align-items: center;
     justify-content: center;
-    padding: 1rem;
+    padding: 0.75rem;
   }
   .dialog-overlay.show { display: flex; }
   .dialog-box {
     background: var(--white);
-    border-radius: 12px;
-    padding: 1.8rem 1.6rem 1.4rem;
+    border-radius: 14px;
+    padding: 1.6rem 1.5rem 1.5rem;
     width: 100%;
-    max-width: 380px;
+    max-width: 620px;
+    max-height: 94vh;
+    overflow-y: auto;
     text-align: center;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.3);
-    border-top: 6px solid var(--accent);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+    border-top: 12px solid var(--accent);
   }
-  .dialog-box.error { border-top-color: var(--danger); }
+  .dialog-box.error    { border-top-color: var(--danger); }
+  .dialog-box.warn     { border-top-color: #c99a00; }
+  .dialog-box.question { border-top-color: var(--ink2); }
   .dialog-icon {
-    width: 52px; height: 52px;
+    width: 76px; height: 76px;
     margin: 0 auto 0.8rem;
     border-radius: 50%;
     background: var(--accent);
     color: #fff;
-    font-size: 1.7rem;
-    line-height: 52px;
+    font-size: 2.6rem;
+    font-weight: 700;
+    line-height: 76px;
   }
-  .dialog-box.error .dialog-icon { background: var(--danger); }
+  .dialog-box.error .dialog-icon    { background: var(--danger); }
+  .dialog-box.warn .dialog-icon     { background: #c99a00; }
+  .dialog-box.question .dialog-icon { background: var(--ink2); }
   .dialog-title {
     font-family: 'Fraunces', serif;
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 0.7rem;
+    font-size: 1.9rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 0.9rem;
+    color: var(--ink);
   }
   .dialog-text {
-    font-size: 0.82rem;
-    color: var(--ink2);
+    font-size: 1.35rem;
+    color: var(--ink);
     line-height: 1.5;
-    white-space: pre-line;
   }
-  .dialog-box.error .btn-primary { background: var(--danger); }
+  /* Werteliste nach dem Speichern */
+  .dialog-values {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 1.3rem;
+    text-align: left;
+    margin-top: 0.3rem;
+  }
+  .dialog-values td {
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid var(--surface2);
+    color: var(--ink);
+    white-space: normal;
+  }
+  .dialog-values td:last-child { text-align: right; font-weight: 700; white-space: nowrap; }
+  .dialog-values tr.notiz td:last-child { white-space: normal; }
+  .dialog-values tr.group td { padding-top: 0.8rem; }
+  .dialog-values tr.hl td {
+    background: var(--accent-dark);
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: 700;
+    border-bottom: 2px solid #fff;
+  }
+  .dialog-warn {
+    margin-top: 1.1rem;
+    background: #fff4c8;
+    border: 3px solid #c99a00;
+    border-radius: 8px;
+    padding: 0.8rem;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #2a2000;
+  }
+  .dialog-input {
+    margin-top: 1.1rem;
+    font-size: 1.5rem !important;
+    min-height: 60px !important;
+    text-align: center;
+  }
+  .dialog-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin-top: 1.5rem;
+  }
+  .dlg-btn {
+    flex: 1 1 200px;
+    min-height: 64px;
+    padding: 0.8rem 1rem;
+    border-radius: 10px;
+    font-family: var(--font);
+    font-size: 1.35rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: 3px solid transparent;
+  }
+  .dlg-btn.primary   { background: var(--accent); color: #fff; }
+  .dlg-btn.primary:hover { background: var(--accent-dark); }
+  .dlg-btn.danger    { background: var(--danger); color: #fff; }
+  .dlg-btn.secondary { background: var(--white); color: var(--ink); border-color: var(--border); }
+  .dlg-btn.secondary:hover { border-color: var(--ink); }
+  .dlg-btn:focus-visible { outline: 4px solid #c99a00; outline-offset: 3px; }
 
-  @media (max-width: 520px) {
-    .fields-grid { grid-template-columns: 1fr; }
+  /* ── Handy-Ansicht ── */
+  @media (max-width: 560px) {
+    .page { padding: 1rem 0.6rem; }
+    .fields-grid { grid-template-columns: 1fr; padding: 1rem; }
     .fields-grid .full { grid-column: 1; }
-    header h1 { font-size: 0.95rem; }
+    header h1 { font-size: 1rem; }
+    /* Start / Ende nebeneinander, Ergebnis darunter in voller Breite */
+    .zutat-row { grid-template-columns: 1fr 1fr; }
+    .zutat-row .kg-field { grid-column: 1 / -1; }
+    .form-footer .btn-primary { width: 100% !important; }
+    .dialog-overlay { padding: 0.4rem; }
+    .dialog-box { padding: 1.2rem 1rem 1.1rem; max-height: 97vh; }
+    .dialog-icon { width: 60px; height: 60px; line-height: 60px; font-size: 2rem; }
+    .dialog-title { font-size: 1.6rem; }
+    .dialog-values td { padding: 0.35rem 0.4rem; }
+    .dialog-values { font-size: 1.2rem; }
+    .dialog-values tr.hl td { font-size: 1.35rem; }
   }
 </style>
 </head>
@@ -559,9 +655,9 @@
 
     <div>
       <label for="f-uhrzeit">Uhrzeit</label>
-      <div style="display:flex;align-items:center;gap:0.4rem;">
-        <input type="number" id="f-uhrzeit" min="0" max="23" placeholder="13" style="max-width:80px;">
-        <span style="font-family:'DM Mono',monospace;font-size:1rem;color:var(--ink2);font-weight:500;">: 00</span>
+      <div class="uhrzeit-wrap">
+        <input type="number" id="f-uhrzeit" min="0" max="23" placeholder="13">
+        <span>: 00 Uhr</span>
       </div>
     </div>
     <div></div>
@@ -697,7 +793,7 @@
       Einträge: <strong id="entry-count">0</strong>
       &nbsp;<span class="sync-status loading" id="sync-status">⟳ lädt…</span>
     </div>
-    <button class="btn-primary" id="btn-save" style="width:auto; margin:0; padding:0.65rem 1.8rem;" onclick="saveEntry()">
+    <button class="btn-primary" id="btn-save" style="width:auto; margin:0; padding:0.75rem 1.8rem;" onclick="saveEntry()">
       Eintrag speichern ✓
     </button>
   </div>
@@ -745,7 +841,7 @@
 
   <!-- Google Script URL Config -->
   <div class="config-box">
-    <div style="font-size:0.7rem;font-weight:500;color:var(--ink);margin-bottom:0.5rem;">⚙️ Google Sheets Verbindung</div>
+    <div style="font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:0.5rem;">⚙️ Google Sheets Verbindung</div>
     <label for="cfg-url">Script-URL (aus Google Apps Script)</label>
     <input type="text" id="cfg-url" placeholder="https://script.google.com/macros/s/…/exec">
     <button class="save-btn" onclick="saveConfig()">Verbindung speichern</button>
@@ -753,11 +849,12 @@
 </div>
 
 <div class="dialog-overlay" id="dialog-overlay">
-  <div class="dialog-box" id="dialog-box">
+  <div class="dialog-box" id="dialog-box" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
     <div class="dialog-icon" id="dialog-icon"></div>
     <div class="dialog-title" id="dialog-title"></div>
     <div class="dialog-text" id="dialog-text"></div>
-    <button class="btn-primary" id="dialog-btn" onclick="closeDialog()">OK</button>
+    <input type="password" class="dialog-input" id="dialog-input" style="display:none" autocomplete="off">
+    <div class="dialog-buttons" id="dialog-buttons"></div>
   </div>
 </div>
 
@@ -774,7 +871,7 @@
   // ── CONFIG ──────────────────────────────────────────
   function saveConfig() {
     const url = document.getElementById("cfg-url").value.trim();
-    if (!url) { alert("Bitte eine URL eingeben."); return; }
+    if (!url) { showDialog("error", "Keine URL", "Bitte eine Script-URL eingeben."); return; }
     scriptUrl = url;
     localStorage.setItem("script_url", url);
     document.getElementById("setup-banner").classList.remove("visible");
@@ -911,8 +1008,16 @@
       return;
     }
     if (mais < 0) {
-      const ok = confirm("Achtung: Der Mais-Wert ist negativ (" + mais + " kg).\n\nDie Substrate sind zusammen schwerer als die Befüllung. Bitte die Werte prüfen.\n\nTrotzdem speichern?");
-      if (!ok) return;
+      const antwort = await openDialog({
+        type: "warn",
+        title: "Mais-Wert negativ",
+        text: "Der Mais-Wert ist negativ: " + kgText(mais) + ".\n\nDie Substrate sind zusammen schwerer als die Befüllung. Bitte die Werte prüfen.",
+        buttons: [
+          { label: "Zurück zur Eingabe", value: "back", style: "secondary", focus: true },
+          { label: "Trotzdem speichern", value: "save", style: "primary" }
+        ]
+      });
+      if (!antwort || antwort.value !== "save") return;
     }
 
     const row = {
@@ -1007,12 +1112,29 @@
 
     if (saved) {
       clearFields();
-      showDialog("success", "Eintrag gespeichert",
-        "Datum: " + row.datum + "\n" +
-        "Uhrzeit: " + row.uhrzeit + "\n" +
-        "Befüllung: " + befuellung + " kg\n" +
-        "Mais: " + mais + " kg\n\n" +
-        "Bitte NICHT nochmal speichern.");
+      // Alle eingetragenen Werte als Liste anzeigen
+      const zeile = (name, wert, cls) =>
+        `<tr${cls ? ' class="' + cls + '"' : ''}><td>${name}</td><td>${escapeHtml(wert)}</td></tr>`;
+      const html =
+        '<table class="dialog-values">' +
+          zeile("Datum",               row.datum) +
+          zeile("Uhrzeit",             row.uhrzeit + " Uhr") +
+          zeile("Mitarbeiter",         row.mitarbeiter) +
+          zeile("Startgewicht gesamt", kgText(start), "group") +
+          zeile("Endgewicht gesamt",   kgText(end)) +
+          zeile("Grassilage",          kgText(gras), "group") +
+          zeile("Kartoffeln",          kgText(kart)) +
+          zeile("Silphie/GPS",         kgText(silph)) +
+          zeile("Mist",                kgText(mist)) +
+          zeile("Schrot",              kgText(schrot)) +
+          zeile("Befüllung",           kgText(befuellung), "hl") +
+          zeile("Mais",                kgText(mais), "hl") +
+          (row.notizen ? zeile("Notizen", row.notizen, "group notiz") : "") +
+        '</table>' +
+        '<div class="dialog-warn">Bitte NICHT nochmal speichern.</div>';
+      // Bleibt offen, bis auf "Hinweis gelesen" geklickt wird
+      openDialog({ type: "success", title: "Eintrag gespeichert", html,
+                   buttons: [{ label: "Hinweis gelesen", value: "ok", style: "primary" }] });
     } else {
       showDialog("error", "Nicht gespeichert",
         "Der Eintrag konnte nicht gespeichert werden. Bitte Internetverbindung prüfen und nochmal auf „Eintrag speichern“ klicken.\n\nDeine Eingaben sind noch vorhanden.");
@@ -1132,8 +1254,8 @@
         <td>${e.silphie_gps}</td>
         <td>${e.mist}</td>
         <td>${e.schrot}</td>
-        <td style="color:var(--accent-dark);font-weight:500">${e.befuellung}</td>
-        <td style="color:var(--accent-dark);font-weight:500">${e.mais}</td>
+        <td style="color:var(--accent-dark);font-weight:700">${e.befuellung}</td>
+        <td style="color:var(--accent-dark);font-weight:700">${e.mais}</td>
         <td>${e.notizen || ''}</td>
       </tr>`
     ).join("");
@@ -1141,10 +1263,31 @@
 
   // ── CLEAR ALL ────────────────────────────────────────
   async function clearAll() {
-    const pw = prompt("Admin-Passwort eingeben:");
-    if (pw === null) return;
-    if (pw !== ADMIN_PASSWORD) { alert("Falsches Passwort."); return; }
-    if (!confirm("Wirklich alle " + entries.length + " Einträge unwiderruflich löschen?")) return;
+    const pw = await openDialog({
+      type: "question",
+      title: "Admin-Passwort",
+      text: "Bitte das Admin-Passwort eingeben:",
+      input: true,
+      buttons: [
+        { label: "Abbrechen", value: "cancel", style: "secondary" },
+        { label: "Weiter",    value: "ok",     style: "primary" }
+      ]
+    });
+    if (!pw || pw.value !== "ok") return;
+    if (pw.input !== ADMIN_PASSWORD) {
+      showDialog("error", "Falsches Passwort", "Das Admin-Passwort ist nicht richtig.\n\nEs wurde nichts gelöscht.");
+      return;
+    }
+    const sicher = await openDialog({
+      type: "warn",
+      title: "Wirklich löschen?",
+      text: "Wirklich alle " + entries.length + " Einträge unwiderruflich löschen?",
+      buttons: [
+        { label: "Abbrechen",        value: "cancel", style: "secondary", focus: true },
+        { label: "Ja, alle löschen", value: "delete", style: "danger" }
+      ]
+    });
+    if (!sicher || sicher.value !== "delete") return;
 
     if (scriptUrl) {
       try {
@@ -1153,14 +1296,15 @@
         if (data.status !== "ok") throw new Error(data.message);
         entries = [];
         renderTable();
-        showToast("✓ Alle Einträge gelöscht");
+        showDialog("success", "Gelöscht", "Alle Einträge wurden gelöscht.");
       } catch(e) {
-        showToast("⚠ Fehler beim Löschen!", true);
+        showDialog("error", "Fehler beim Löschen", "Die Einträge konnten nicht gelöscht werden. Bitte Internetverbindung prüfen und nochmal versuchen.");
       }
     } else {
       entries = [];
       localStorage.removeItem("futter_entries");
       renderTable();
+      showDialog("success", "Gelöscht", "Alle Einträge wurden gelöscht.");
     }
   }
 
@@ -1289,20 +1433,81 @@
   }
 
   // ── MELDUNGSFENSTER ──────────────────────────────────
-  // Der Hinweis bleibt offen, bis der Nutzer auf den Button klickt
-  let dialogTimer = null;
-  function showDialog(type, title, text) {
-    document.getElementById("dialog-box").className  = "dialog-box " + type;
-    document.getElementById("dialog-icon").textContent  = type === "success" ? "✓" : "⚠";
-    document.getElementById("dialog-title").textContent = title;
-    document.getElementById("dialog-text").textContent  = text;
-    document.getElementById("dialog-btn").textContent   = type === "success" ? "Hinweis gelesen" : "OK";
+  // Ein großes Fenster für alle Hinweise, Rückfragen und die Passwort-Abfrage.
+  // openDialog liefert die Antwort: { value: <gedrückter Knopf>, input: <eingegebener Text> }
+  // Das Fenster schließt NUR über einen Knopf (kein Timer, kein Klick daneben).
+  let dialogResolve = null;
+
+  function openDialog(opts) {
+    const type    = opts.type || "success";
+    const buttons = opts.buttons || [{
+      label: type === "success" ? "Hinweis gelesen" : "OK",
+      value: "ok",
+      style: type === "error" ? "danger" : "primary"
+    }];
+
+    if (dialogResolve) { const r = dialogResolve; dialogResolve = null; r(null); }
+
+    document.getElementById("dialog-box").className = "dialog-box " + type;
+    document.getElementById("dialog-icon").textContent =
+      { success: "✓", error: "!", warn: "!", question: "?" }[type] || "i";
+    document.getElementById("dialog-title").textContent = opts.title || "";
+
+    const textEl = document.getElementById("dialog-text");
+    if (opts.html) { textEl.innerHTML = opts.html; textEl.style.whiteSpace = "normal"; }
+    else           { textEl.textContent = opts.text || ""; textEl.style.whiteSpace = "pre-line"; }
+
+    const inp = document.getElementById("dialog-input");
+    inp.value = "";
+    inp.style.display = opts.input ? "block" : "none";
+
+    const btnBox = document.getElementById("dialog-buttons");
+    btnBox.innerHTML = "";
+    let focusBtn = null;
+    buttons.forEach(b => {
+      const el = document.createElement("button");
+      el.className   = "dlg-btn " + (b.style || "primary");
+      el.textContent = b.label;
+      el.onclick     = () => finishDialog(b.value);
+      btnBox.appendChild(el);
+      if (b.focus) focusBtn = el;
+    });
+
     document.getElementById("dialog-overlay").classList.add("show");
-    clearTimeout(dialogTimer);
+    // Fenster immer von oben zeigen (Überschrift sichtbar), Fokus ohne Springen setzen
+    document.getElementById("dialog-box").scrollTop = 0;
+    setTimeout(() => (opts.input ? inp : (focusBtn || btnBox.lastElementChild)).focus({ preventScroll: true }), 50);
+
+    return new Promise(res => { dialogResolve = res; });
   }
-  function closeDialog() {
-    clearTimeout(dialogTimer);
+
+  function finishDialog(value) {
     document.getElementById("dialog-overlay").classList.remove("show");
+    const inp = document.getElementById("dialog-input");
+    const inputVal = inp.value;
+    inp.value = "";
+    if (dialogResolve) {
+      const r = dialogResolve; dialogResolve = null;
+      r(value === null ? null : { value, input: inputVal });
+    }
+  }
+  function closeDialog() { finishDialog(null); }
+
+  // Kurzform für einfache Hinweise mit OK-Knopf
+  function showDialog(type, title, text) { return openDialog({ type, title, text }); }
+
+  // Enter im Passwortfeld = Weiter
+  document.getElementById("dialog-input").addEventListener("keydown", e => {
+    if (e.key === "Enter") finishDialog("ok");
+  });
+
+  // Zahl als "2.072,5 kg" (deutsches Format)
+  function kgText(v) {
+    return (Math.round((parseFloat(v) || 0) * 100) / 100).toLocaleString("de-DE") + " kg";
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   }
 
   // ── HELPERS ──────────────────────────────────────────
@@ -1317,7 +1522,7 @@
     t.textContent = msg;
     t.className = "toast" + (isError ? " error" : "");
     t.classList.add("show");
-    setTimeout(() => t.classList.remove("show"), 2500);
+    setTimeout(() => t.classList.remove("show"), 4000);
   }
 
   // Pre-fill saved URL
