@@ -238,7 +238,9 @@
     position: fixed;
     bottom: 1.5rem;
     left: 50%;
-    transform: translateX(-50%) translateY(120px);
+    transform: translateX(-50%) translateY(40px);
+    opacity: 0;              /* unsichtbar, solange keine Meldung da ist */
+    visibility: hidden;
     background: var(--accent-dark);
     color: #fff;
     padding: 1rem 1.6rem;
@@ -246,12 +248,12 @@
     font-size: 1.25rem;
     font-weight: 700;
     box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease, opacity 0.3s ease, visibility 0.3s;
     pointer-events: none;
     max-width: calc(100% - 2rem);
     text-align: center;
   }
-  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; }
   .toast.error { background: var(--danger); }
 
   .records-section {
